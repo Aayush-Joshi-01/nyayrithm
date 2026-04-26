@@ -1,0 +1,85 @@
+[project]
+name = "nyayrithm-backend"
+version = "0.1.0"
+description = "Nyayrithm — AI-powered legal reasoning and courtroom simulation platform"
+requires-python = ">=3.11"
+dependencies = [
+    # Web
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "websockets>=12.0",
+    "python-multipart>=0.0.9",
+    # Validation & config
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.6.0",
+    # DB drivers (loaded per backend)
+    "asyncpg>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "aiosqlite>=0.20.0",
+    "motor>=3.6.0",
+    "aioboto3>=13.0.0",
+    # Migrations (SQL backends)
+    "alembic>=1.13.0",
+    # Task queue
+    "celery[redis]>=5.4.0",
+    "redis>=5.2.0",
+    # LLM providers
+    "openai>=1.54.0",
+    "anthropic>=0.40.0",
+    # Vector DBs
+    "qdrant-client>=1.12.0",
+    "chromadb>=0.5.0",
+    # Embeddings (local fallback)
+    "sentence-transformers>=3.3.0",
+    # Evidence ingestion
+    "pdfplumber>=0.11.0",
+    "PyMuPDF>=1.24.0",
+    "python-docx>=1.1.0",
+    "faster-whisper>=1.0.0",
+    "ffmpeg-python>=0.2.0",
+    "Pillow>=11.0.0",
+    "opencv-python-headless>=4.10.0",
+    # Auth
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    # HTTP client
+    "httpx>=0.27.0",
+    # Utilities
+    "python-dateutil>=2.9.0",
+    "structlog>=24.4.0",
+    "tenacity>=9.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "httpx>=0.27.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-passlib",
+    "types-python-dateutil",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
