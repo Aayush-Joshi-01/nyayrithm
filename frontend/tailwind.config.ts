@@ -56,9 +56,46 @@ const config: Config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "fade-up": "fade-up 0.6s ease-out forwards",
+        "fade-in": "fade-in 0.8s ease-out forwards",
+        "scale-in": "scale-in 0.5s ease-out forwards",
+        shimmer: "shimmer 3s linear infinite",
+        "gavel-drop": "gavel-drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
+        float: "float 4s ease-in-out infinite",
       },
       fontFamily: {
+        sans: ["var(--font-inter)", "Inter", "sans-serif"],
+        serif: ["var(--font-playfair)", "Georgia", "serif"],
+        display: ["var(--font-cinzel)", "var(--font-playfair)", "Georgia", "serif"],
         mono: ["JetBrains Mono", "Fira Code", "monospace"],
+      },
+      keyframes: {
+        "fade-up": {
+          "0%": { opacity: "0", transform: "translateY(24px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.94)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        "gavel-drop": {
+          "0%": { transform: "rotate(-40deg) translateY(-10px)", opacity: "0" },
+          "60%": { transform: "rotate(0deg) translateY(0px)", opacity: "1" },
+          "75%": { transform: "rotate(3deg)" },
+          "100%": { transform: "rotate(0deg)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
       },
     },
   },

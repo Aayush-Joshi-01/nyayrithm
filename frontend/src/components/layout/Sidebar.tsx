@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { getKeycloakLogoutUrl } from "@/lib/keycloak"
+import { useRouter } from "next/navigation"
 
 const navSections = [
   {
@@ -63,10 +63,11 @@ function NavItem({ href, label, icon: Icon, active }: {
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
 
-  const handleLogout = () => {
-    const redirectUri = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
-    window.location.href = getKeycloakLogoutUrl(redirectUri)
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    router.push("/login")
   }
 
   return (

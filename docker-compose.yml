@@ -82,6 +82,24 @@ services:
       - redis
     restart: unless-stopped
 
+  # ── Keycloak (Identity & Access Management) ──────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.4
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - keycloakdata:/opt/keycloak/data
+    restart: unless-stopped
+
   # ── Frontend ──────────────────────────────────────────────
   frontend:
     build:
@@ -97,8 +115,14 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NEXT_PUBLIC_WS_URL: ws://localhost:8000
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
+      NEXT_PUBLIC_KEYCLOAK_REALM: nyayrithm
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: nyayrithm-app
+      KEYCLOAK_ADMIN_USER: admin
+      KEYCLOAK_ADMIN_PASS: admin
     depends_on:
       - backend
+      - keycloak
     restart: unless-stopped
 
   # ── PostgreSQL (default relational DB) ────────────────────
@@ -179,6 +203,7 @@ services:
 
 volumes:
   pgdata:
+  keycloakdata:
   mongodata:
   redisdata:
   qdrantdata:
