@@ -1,9 +1,17 @@
-"use client";
+"use client"
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { X } from "lucide-react";
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Scale } from "lucide-react"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 const schema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
@@ -11,99 +19,117 @@ const schema = z.object({
   country: z.string().min(2, "Country is required"),
   jurisdiction: z.string().optional(),
   legal_system: z.enum(["common_law", "civil_law", "sharia", "hybrid"]),
-});
+})
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof schema>
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (data: FormValues) => void;
-  loading?: boolean;
+  open: boolean
+  onClose: () => void
+  onSubmit: (data: FormValues) => void
+  loading?: boolean
 }
 
 export function CaseCreateModal({ open, onClose, onSubmit, loading }: Props) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm<FormValues>({
+  const { register, handleSubmit, setValue, watch, formState: { errors }, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { legal_system: "common_law" },
-  });
+  })
 
-  if (!open) return null;
+  const legalSystem = watch("legal_system")
+
+  const handleClose = () => {
+    reset()
+    onClose()
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md mx-4 bg-card border border-border rounded-xl shadow-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold">New Case</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <Scale className="w-4 h-4 text-amber-400" />
+            </div>
+            <DialogTitle>New Case</DialogTitle>
+          </div>
+          <DialogDescription>
+            Create a legal case to organise evidence and run courtroom simulations.
+          </DialogDescription>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit((d) => { onSubmit(d); reset(); })} className="space-y-4">
-          <div>
-            <label className="text-sm text-muted-foreground block mb-1">Case Title *</label>
-            <input
+        <form
+          onSubmit={handleSubmit((d) => { onSubmit(d); reset() })}
+          className="space-y-4 mt-2"
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="title">Case Title *</Label>
+            <Input
+              id="title"
               {...register("title")}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
               placeholder="e.g., State vs. Kumar — 2024"
             />
-            {errors.title && <p className="text-red-400 text-xs mt-1">{errors.title.message}</p>}
+            {errors.title && <p className="text-red-400 text-xs">{errors.title.message}</p>}
           </div>
 
-          <div>
-            <label className="text-sm text-muted-foreground block mb-1">Description</label>
-            <textarea
+          <div className="space-y-1.5">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
               {...register("description")}
               rows={3}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
               placeholder="Brief case summary..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm text-muted-foreground block mb-1">Country *</label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country *</Label>
+              <Input
+                id="country"
                 {...register("country")}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="India"
               />
-              {errors.country && <p className="text-red-400 text-xs mt-1">{errors.country.message}</p>}
+              {errors.country && <p className="text-red-400 text-xs">{errors.country.message}</p>}
             </div>
-            <div>
-              <label className="text-sm text-muted-foreground block mb-1">Jurisdiction</label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="jurisdiction">Jurisdiction</Label>
+              <Input
+                id="jurisdiction"
                 {...register("jurisdiction")}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
                 placeholder="IN-MH"
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-sm text-muted-foreground block mb-1">Legal System</label>
-            <select
-              {...register("legal_system")}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500"
+          <div className="space-y-1.5">
+            <Label>Legal System</Label>
+            <Select
+              value={legalSystem}
+              onValueChange={(v) => setValue("legal_system", v as FormValues["legal_system"])}
             >
-              <option value="common_law">Common Law</option>
-              <option value="civil_law">Civil Law</option>
-              <option value="sharia">Sharia</option>
-              <option value="hybrid">Hybrid</option>
-            </select>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="common_law">Common Law</SelectItem>
+                <SelectItem value="civil_law">Civil Law</SelectItem>
+                <SelectItem value="sharia">Sharia</SelectItem>
+                <SelectItem value="hybrid">Hybrid</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black rounded-lg text-sm font-medium transition-colors"
-          >
-            {loading ? "Creating..." : "Create Case"}
-          </button>
+          <DialogFooter className="mt-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="amber" disabled={loading}>
+              {loading ? "Creating…" : "Create Case"}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
-  );
+      </DialogContent>
+    </Dialog>
+  )
 }

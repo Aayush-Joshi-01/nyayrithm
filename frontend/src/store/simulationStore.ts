@@ -24,7 +24,7 @@ interface SimulationState {
   handleWsEvent: (event: WsEvent) => void;
 }
 
-export const useSimulationStore = create<SimulationState>((set, get) => ({
+export const useSimulationStore = create<SimulationState>((set, _get) => ({
   turns: [],
   agents: [],
   graph: { nodes: [], edges: [] },

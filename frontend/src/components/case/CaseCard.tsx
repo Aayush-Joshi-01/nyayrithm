@@ -1,51 +1,86 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { Globe, Scale, ArrowRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { Case } from "@/types/api";
+import Link from "next/link"
+import { Globe, Scale, ArrowRight, FileText, Play } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
+import { formatDistanceToNow } from "date-fns"
+import type { Case } from "@/types/api"
 
-const STATUS_STYLES: Record<string, string> = {
-  open: "text-emerald-400 bg-emerald-400/10",
-  in_simulation: "text-amber-400 bg-amber-400/10 animate-pulse-slow",
-  closed: "text-slate-400 bg-slate-400/10",
-  archived: "text-slate-600 bg-slate-600/10",
-};
+const STATUS_CONFIG: Record<string, { label: string; variant: "success" | "warning" | "muted" | "outline" }> = {
+  open: { label: "Open", variant: "success" },
+  in_simulation: { label: "Simulating", variant: "warning" },
+  closed: { label: "Closed", variant: "muted" },
+  archived: { label: "Archived", variant: "muted" },
+}
+
+const LEGAL_SYSTEM_LABELS: Record<string, string> = {
+  common_law: "Common Law",
+  civil_law: "Civil Law",
+  sharia: "Sharia",
+  hybrid: "Hybrid",
+}
 
 export function CaseCard({ case_ }: { case_: Case }) {
+  const statusCfg = STATUS_CONFIG[case_.status] ?? { label: case_.status, variant: "outline" as const }
+
   return (
-    <Link href={`/dashboard/${case_.id}/evidence`}>
-      <div className="group relative p-5 rounded-xl border border-border bg-card hover:border-amber-500/30 hover:bg-card/80 transition-all cursor-pointer">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Scale className="w-4 h-4 text-amber-400" />
+    <Link href={`/dashboard/${case_.id}`}>
+      <Card className="group cursor-pointer hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200 h-full">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <Scale className="w-4 h-4 text-amber-400" />
+              </div>
+              <Badge variant={statusCfg.variant} className="text-xs">
+                {statusCfg.label}
+              </Badge>
             </div>
-            <span
-              className={cn(
-                "text-xs font-medium px-2 py-0.5 rounded-full",
-                STATUS_STYLES[case_.status] ?? "text-slate-400 bg-slate-400/10"
-              )}
-            >
-              {case_.status.replace("_", " ")}
+            <ArrowRight className="w-4 h-4 text-white/20 opacity-0 group-hover:opacity-100 group-hover:text-amber-400 transition-all flex-shrink-0 mt-0.5" />
+          </div>
+
+          <h3 className="font-semibold text-white/90 line-clamp-2 leading-snug mt-2 text-sm">
+            {case_.title}
+          </h3>
+        </CardHeader>
+
+        <CardContent className="pb-3">
+          <p className="text-xs text-white/40 line-clamp-2 leading-relaxed mb-3">
+            {case_.description || "No description provided."}
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-xs text-white/30">
+              <Globe className="w-3 h-3" />
+              {case_.country}
+            </span>
+            <Badge variant="outline" className="text-xs border-white/10 text-white/30 bg-transparent">
+              {LEGAL_SYSTEM_LABELS[case_.legal_system] ?? case_.legal_system}
+            </Badge>
+            {case_.jurisdiction && (
+              <Badge variant="outline" className="text-xs border-white/10 text-white/30 bg-transparent">
+                {case_.jurisdiction}
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+
+        <CardFooter className="pt-3 border-t border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-3 text-xs text-white/25">
+            <span className="flex items-center gap-1">
+              <FileText className="w-3 h-3" />
+              Evidence
+            </span>
+            <span className="flex items-center gap-1">
+              <Play className="w-3 h-3" />
+              Simulate
             </span>
           </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-
-        <h3 className="font-semibold text-foreground line-clamp-2 mb-1">{case_.title}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{case_.description}</p>
-
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Globe className="w-3 h-3" />
-            {case_.country}
+          <span className="text-xs text-white/20">
+            {formatDistanceToNow(new Date(case_.created_at), { addSuffix: true })}
           </span>
-          <span className="px-2 py-0.5 rounded bg-muted">
-            {case_.legal_system.replace("_", " ")}
-          </span>
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </Link>
-  );
+  )
 }

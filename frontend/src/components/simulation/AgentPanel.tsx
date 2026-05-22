@@ -4,7 +4,7 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { ROLE_COLORS, ROLE_HEX, formatRole, cn } from "@/lib/utils";
 import type { AgentRole } from "@/types/api";
 
-export function AgentPanel({ simId }: { simId: string }) {
+export function AgentPanel({ simId: _simId }: { simId: string }) {
   const { agents, streaming } = useSimulationStore();
 
   return (
