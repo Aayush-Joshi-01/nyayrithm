@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { WebGLShader } from "@/components/ui/web-gl-shader"
 import { MetalButton } from "@/components/ui/liquid-glass-button"
+import { GlobePulse } from "@/components/ui/cobe-globe-pulse"
 
 /* ─── Animated section wrapper ──────────────────────────────── */
 function FadeUp({ children, delay = 0, className = "" }: {
@@ -191,105 +192,144 @@ export default function LandingPage() {
       </nav>
 
       {/* ── Hero ───────────────────────────────────────────── */}
-      <section ref={heroRef} className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-center pt-24">
-        <motion.div style={{ opacity: heroOpacity, y: heroY }} className="w-full flex flex-col items-center">
-
-          {/* Status badge */}
-          {mounted && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, ease: "backOut" }}
-              className="inline-flex items-center gap-2.5 px-4 py-2 mb-10 rounded-full border border-red-500/30 bg-red-500/10 backdrop-blur-sm"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
-              </span>
-              <span className="font-display text-[10px] tracking-[0.3em] uppercase text-red-300">
-                The Court Is Now In Session
-              </span>
-            </motion.div>
-          )}
-
-          {/* Main heading */}
-          {mounted && (
-            <motion.h1
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="font-serif text-6xl md:text-8xl lg:text-[108px] font-bold tracking-tight text-white leading-[0.92] mb-6 max-w-5xl"
-            >
-              Justice Has a{" "}
-              <em className="not-italic shimmer-text">
-                New
-              </em>
-              <br />
-              <span className="text-white">Intelligence.</span>
-            </motion.h1>
-          )}
-
-          {/* Sub-headline */}
-          {mounted && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.3 }}
-              className="max-w-2xl mb-12"
-            >
-              <p className="text-lg md:text-xl text-white/50 leading-relaxed">
-                Nyayrithm simulates the full arc of legal proceedings — from evidence ingestion to final verdict — using a dynamic graph of AI agents, each playing a distinct legal role with scoped knowledge and real-time reasoning.
-              </p>
-            </motion.div>
-          )}
-
-          {/* CTAs */}
-          {mounted && (
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.45 }}
-              className="flex flex-col sm:flex-row items-center gap-4 mb-16"
-            >
-              <Link href="/signup">
-                <MetalButton variant="primary" className="text-base font-bold px-8 py-3 h-12 rounded-full">
-                  Enter the Courtroom
-                  <ChevronRight className="w-4 h-4 ml-1.5 inline" />
-                </MetalButton>
-              </Link>
-              <Link
-                href="/docs"
-                className="px-8 py-3 h-12 inline-flex items-center gap-2 text-white/60 hover:text-white text-base border border-white/15 hover:border-white/30 rounded-full transition-all frosted-card"
+      <section ref={heroRef} className="relative z-10 min-h-screen flex items-center px-6 pt-24 pb-16">
+        <motion.div
+          style={{ opacity: heroOpacity, y: heroY }}
+          className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
+        >
+          {/* ── Left column: text ── */}
+          <div className="flex flex-col items-start">
+            {/* Status badge */}
+            {mounted && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: "backOut" }}
+                className="inline-flex items-center gap-2.5 px-4 py-2 mb-8 rounded-full border border-red-500/30 bg-red-500/10 backdrop-blur-sm"
               >
-                <BookOpen className="w-4 h-4" />
-                Read the Docs
-              </Link>
-            </motion.div>
-          )}
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
+                </span>
+                <span className="font-display text-[10px] tracking-[0.3em] uppercase text-red-300">
+                  The Court Is Now In Session
+                </span>
+              </motion.div>
+            )}
 
-          {/* Stats pills */}
+            {/* Main heading */}
+            {mounted && (
+              <motion.h1
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="font-serif text-5xl md:text-6xl lg:text-7xl xl:text-[82px] font-bold tracking-tight text-white leading-[0.92] mb-6"
+              >
+                Justice Has a{" "}
+                <em className="not-italic shimmer-text">New</em>
+                <br />
+                <span className="text-white">Intelligence.</span>
+              </motion.h1>
+            )}
+
+            {/* Sub-headline */}
+            {mounted && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.3 }}
+                className="mb-10"
+              >
+                <p className="text-base md:text-lg text-white/50 leading-relaxed max-w-lg">
+                  Nyayrithm simulates the full arc of legal proceedings — from evidence ingestion to final verdict — using a dynamic graph of AI agents, each playing a distinct legal role with scoped knowledge and real-time reasoning.
+                </p>
+              </motion.div>
+            )}
+
+            {/* CTAs */}
+            {mounted && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
+                className="flex flex-wrap items-center gap-4 mb-10"
+              >
+                <Link href="/signup">
+                  <MetalButton variant="primary" className="text-sm font-bold px-8 py-3 h-11 rounded-full">
+                    Enter the Courtroom
+                    <ChevronRight className="w-4 h-4 ml-1.5 inline" />
+                  </MetalButton>
+                </Link>
+                <Link
+                  href="/docs"
+                  className="px-7 py-3 h-11 inline-flex items-center gap-2 text-white/60 hover:text-white text-sm border border-white/15 hover:border-white/30 rounded-full transition-all frosted-card"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Read the Docs
+                </Link>
+              </motion.div>
+            )}
+
+            {/* Stats pills */}
+            {mounted && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="flex flex-wrap gap-2"
+              >
+                {[
+                  { icon: Users, label: "9 Agent Roles" },
+                  { icon: Database, label: "Multi-modal RAG" },
+                  { icon: Zap, label: "Live Streaming" },
+                  { icon: Brain, label: "Multi-LLM" },
+                  { icon: FileSearch, label: "Citations" },
+                ].map(({ icon: Icon, label }) => (
+                  <div
+                    key={label}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full frosted-card text-white/40 text-xs"
+                  >
+                    <Icon className="w-3 h-3 text-amber-500/60" />
+                    {label}
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </div>
+
+          {/* ── Right column: globe ── */}
           {mounted && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="flex flex-wrap items-center justify-center gap-3"
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 1.2, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="flex items-center justify-center lg:justify-end"
             >
-              {[
-                { icon: Users, label: "9 Agent Roles" },
-                { icon: Database, label: "Multi-modal RAG" },
-                { icon: Zap, label: "WebSocket Streaming" },
-                { icon: Brain, label: "Multi-Provider LLM" },
-                { icon: FileSearch, label: "Citation Engine" },
-              ].map(({ icon: Icon, label }) => (
-                <div
-                  key={label}
-                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full frosted-card text-white/40 text-xs"
-                >
-                  <Icon className="w-3.5 h-3.5 text-amber-500/60" />
-                  {label}
+              <div className="relative w-full max-w-[520px]">
+                {/* Outer glow ring */}
+                <div className="absolute inset-0 rounded-full pointer-events-none"
+                  style={{
+                    background: "radial-gradient(circle at 50% 50%, rgba(245,158,11,0.12) 0%, rgba(245,158,11,0.04) 45%, transparent 70%)",
+                    filter: "blur(20px)",
+                    transform: "scale(1.15)",
+                  }}
+                />
+                {/* City labels ring */}
+                <div className="absolute -inset-8 rounded-full border border-amber-500/8 pointer-events-none" />
+                <div className="absolute -inset-16 rounded-full border border-amber-500/4 pointer-events-none" />
+
+                <GlobePulse
+                  className="w-full drop-shadow-2xl"
+                  speed={0.0025}
+                />
+
+                {/* "Jurisdictions worldwide" label */}
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
+                  <p className="font-display text-[9px] tracking-[0.3em] text-amber-500/40 uppercase">
+                    8 Jurisdictions · Live
+                  </p>
                 </div>
-              ))}
+              </div>
             </motion.div>
           )}
         </motion.div>
@@ -298,10 +338,10 @@ export default function LandingPage() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+          transition={{ delay: 1.4 }}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
         >
-          <div className="w-px h-10 bg-gradient-to-b from-transparent to-white/20" />
+          <div className="w-px h-8 bg-gradient-to-b from-transparent to-white/20" />
           <p className="font-display text-[9px] tracking-[0.3em] text-white/20 uppercase">Scroll</p>
         </motion.div>
       </section>

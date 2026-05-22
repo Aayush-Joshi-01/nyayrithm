@@ -312,7 +312,7 @@ PROVIDER_REGISTRY["myprovider"] = MyProvider
           {/* ── WebSocket Events ─────────────────────────────── */}
           <H2 id="websocket-events">WebSocket Events</H2>
 
-          <P>Connect to <InlineCode>ws://localhost:8000/ws/simulation/{"{id}"}</InlineCode> to receive real-time simulation events.</P>
+          <P>Connect to <InlineCode>{"ws://localhost:8000/ws/simulation/{id}"}</InlineCode> to receive real-time simulation events.</P>
 
           <H3>Event Reference</H3>
           <Code lang="typescript">{`// Simulation turn begins
