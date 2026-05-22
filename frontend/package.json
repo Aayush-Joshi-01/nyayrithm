@@ -36,9 +36,6 @@
     "ky": "^1.7.2",
     "date-fns": "^4.1.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["sharp", "unrs-resolver"]
-  },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
