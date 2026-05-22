@@ -21,6 +21,11 @@ AI agents assume legal roles — judge, prosecutor, defense, witnesses, investig
 - [Development commands](#development-commands)
 - [Project structure](#project-structure)
 
+### Platform setup guides
+- [Windows setup](docs/setup-windows.md) — Docker Desktop, native + WSL2, or fully offline Ollama
+- [macOS setup](docs/setup-macos.md) — Docker Desktop, Homebrew native, or Apple Silicon Ollama
+- [Linux setup](docs/setup-linux.md) — Docker Compose, native, systemd services, GPU acceleration
+
 ---
 
 ## What it does
@@ -177,28 +182,29 @@ Edit `backend/app/llm/registry.py`:
 
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.0-flash"),    # best free reasoning
-    "prosecutor":     ("gemini", "gemini-2.0-flash"),
-    "defense":        ("gemini", "gemini-2.0-flash"),
-    "plaintiff":      ("gemini", "gemini-1.5-flash-8b"), # lightest model
-    "accused":        ("gemini", "gemini-1.5-flash-8b"),
-    "witness":        ("gemini", "gemini-1.5-flash-8b"),
-    "investigator":   ("gemini", "gemini-2.0-flash"),
-    "expert_witness": ("gemini", "gemini-2.0-flash"),
-    "custom":         ("gemini", "gemini-1.5-flash-8b"),
+    "judge":          ("gemini", "gemini-2.5-flash"),       # best free reasoning
+    "prosecutor":     ("gemini", "gemini-2.5-flash"),
+    "defense":        ("gemini", "gemini-2.5-flash"),
+    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),  # lightest model
+    "accused":        ("gemini", "gemini-2.5-flash-lite"),
+    "witness":        ("gemini", "gemini-2.5-flash-lite"),
+    "investigator":   ("gemini", "gemini-2.5-flash"),
+    "expert_witness": ("gemini", "gemini-2.5-flash"),
+    "custom":         ("gemini", "gemini-2.5-flash-lite"),
 }
 ```
 
-**Free tier quotas (April 2026):**
+> ⚠️ **Gemini 2.0 Flash was deprecated (shut down June 1, 2026).** Use `gemini-2.5-flash` or `gemini-2.5-flash-lite`.
 
-| Model | Requests/min | Tokens/day |
-|-------|-------------|-----------|
-| Gemini 2.0 Flash | 15 | 1,500,000 |
-| Gemini 1.5 Flash | 15 | 1,000,000 |
-| Gemini 1.5 Flash-8B | 15 | 4,000,000 |
-| Gemini 1.5 Pro | 2 | 50,000 |
+**Free tier quotas (May 2026):**
 
-A typical simulation (20 turns, 6 agents) uses roughly 40,000–80,000 tokens — well within the free daily quota.
+| Model | Requests/day | Notes |
+|-------|-------------|-------|
+| Gemini 2.5 Flash | 1,500 | Best reasoning on free tier |
+| Gemini 2.5 Flash-Lite | 1,500 | Lightest, good for simple roles |
+| Gemini 2.5 Pro | 50 | Very limited — use for judge only |
+
+A typical simulation (20 turns, 6 agents) uses well under 1,500 daily requests.
 
 ---
 
@@ -239,7 +245,8 @@ LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
 ```
 
-See [Running locally for free with Gemini](#running-locally-for-free-with-gemini).
+Recommended free models: `gemini-2.5-flash` (best reasoning) · `gemini-2.5-flash-lite` (lightest).
+See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/llm-providers.md`](docs/llm-providers.md).
 
 ### Ollama — fully local, offline
 

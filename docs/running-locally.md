@@ -352,7 +352,7 @@ make logs    # if using Docker
 
 You've hit the free tier RPM (15 requests/min). Solutions:
 - Reduce simulation speed (add `TURN_DELAY_SECONDS=5` to `.env`)
-- Use `gemini-1.5-flash-8b` for simple roles (higher TPD quota)
+- Use `gemini-2.5-flash-lite` for simple roles (higher daily request quota)
 - Spread agents across multiple providers
 
 ### Qdrant collection already exists error

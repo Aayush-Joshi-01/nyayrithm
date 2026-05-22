@@ -32,15 +32,15 @@ ROLE_PROVIDER_MAP = {
 ### Free tier
 Google AI Studio provides a free tier with no credit card required:
 
-| Model | Free RPM | Free TPD | Context window |
-|-------|---------|---------|----------------|
-| Gemini 2.0 Flash | 15 | 1,500,000 | 1M tokens |
-| Gemini 1.5 Flash | 15 | 1,000,000 | 1M tokens |
-| Gemini 1.5 Flash-8B | 15 | 4,000,000 | 1M tokens |
-| Gemini 1.5 Pro | 2 | 50,000 | 2M tokens |
-| Gemini 2.0 Flash-Lite | 30 | 1,500,000 | 1M tokens |
+| Model | Free RPD | Notes |
+|-------|---------|-------|
+| Gemini 2.5 Flash | 1,500 | **Recommended** — best reasoning on free tier |
+| Gemini 2.5 Flash-Lite | 1,500 | Lightest model, most quota-efficient |
+| Gemini 2.5 Pro | 50 | Very limited free quota — use sparingly |
 
-For most simulations (< 20 turns), **Gemini 2.0 Flash** on the free tier is sufficient.
+> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Migrate any existing configs to `gemini-2.5-flash` or `gemini-2.5-flash-lite`.
+
+For most simulations (< 20 turns), **Gemini 2.5 Flash** on the free tier is sufficient.
 
 ### Setup
 ```env
@@ -51,22 +51,23 @@ GEMINI_API_KEY=AIza...          # from https://aistudio.google.com/app/apikey
 ### Recommended role assignments (free tier)
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.0-flash"),      # best free reasoning
-    "prosecutor":     ("gemini", "gemini-2.0-flash"),
-    "defense":        ("gemini", "gemini-2.0-flash"),
-    "plaintiff":      ("gemini", "gemini-1.5-flash-8b"),   # lightest / most quota
-    "accused":        ("gemini", "gemini-1.5-flash-8b"),
-    "witness":        ("gemini", "gemini-1.5-flash-8b"),
-    "investigator":   ("gemini", "gemini-2.0-flash"),
-    "expert_witness": ("gemini", "gemini-2.0-flash"),
-    "custom":         ("gemini", "gemini-1.5-flash-8b"),
+    "judge":          ("gemini", "gemini-2.5-flash"),       # best free reasoning
+    "prosecutor":     ("gemini", "gemini-2.5-flash"),
+    "defense":        ("gemini", "gemini-2.5-flash"),
+    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),  # lightest / most quota
+    "accused":        ("gemini", "gemini-2.5-flash-lite"),
+    "witness":        ("gemini", "gemini-2.5-flash-lite"),
+    "investigator":   ("gemini", "gemini-2.5-flash"),
+    "expert_witness": ("gemini", "gemini-2.5-flash"),
+    "custom":         ("gemini", "gemini-2.5-flash-lite"),
 }
 ```
 
 ### Notes
-- Gemini 1.5 Pro has a 2 RPM free limit — avoid assigning it to high-turn roles
-- Free tier responses may be slower during peak hours
+- `gemini-2.5-pro` has only 50 RPD on the free tier — avoid assigning it to high-turn roles
+- Free tier responses may be slightly slower during peak hours
 - For production, upgrade to the paid tier (priced per million tokens, competitive with GPT-4o-mini)
+- Always check current quotas in [Google AI Studio](https://aistudio.google.com) — limits update automatically as your account tier changes
 
 ---
 
