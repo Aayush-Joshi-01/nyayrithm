@@ -1,32 +1,33 @@
-FROM node:24-alpine AS base
-RUN npm install -g pnpm@latest
+FROM oven/bun:1.3-alpine AS base
 
 # ── Dev stage (used by docker-compose) ───────────────────────────────────────
-# Installs deps only. Source code is mounted as a volume at runtime so
-# hot-reload sees host file changes. node_modules stays inside the container.
+# Install deps only. Source code is mounted as a volume so hot-reload works.
+# node_modules lives inside the container (anonymous volume) not on the host.
 FROM base AS dev
 WORKDIR /app
 ENV CI=true
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-RUN pnpm install
+# Install musl compat libs needed by Next.js SWC binary on Alpine
+RUN apk add --no-cache libc6-compat
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 EXPOSE 3000
-CMD ["pnpm", "dev"]
+CMD ["bun", "run", "dev"]
 
-# ── Builder stage (production image) ─────────────────────────────────────────
-# Self-contained: installs deps and runs next build in a single stage so
-# pnpm's virtual store is never copied across layer boundaries.
+# ── Builder stage ─────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
 ENV CI=true
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
-RUN pnpm install
+RUN apk add --no-cache libc6-compat
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY . .
-RUN pnpm build
+RUN bun run build
 
 # ── Production stage ──────────────────────────────────────────────────────────
 FROM node:24-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache libc6-compat
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public

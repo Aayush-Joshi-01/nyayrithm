@@ -48,16 +48,16 @@ test:
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
 install-frontend:
-	cd frontend && pnpm install
+	cd frontend && bun install
 
 run-frontend:
-	cd frontend && pnpm dev
+	cd frontend && bun dev
 
 build-frontend:
-	cd frontend && pnpm build
+	cd frontend && bun run build
 
 lint-frontend:
-	cd frontend && pnpm lint && pnpm tsc --noEmit
+	cd frontend && bun run lint && bun run tsc --noEmit
 
 # ── Infrastructure ────────────────────────────────────────────────────────────
 
