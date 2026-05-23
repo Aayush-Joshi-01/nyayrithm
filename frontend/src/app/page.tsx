@@ -148,7 +148,7 @@ export default function LandingPage() {
       </div>
 
       {/* Frosted overlay — improves text readability over shader */}
-      <div className="fixed inset-0 z-[1] pointer-events-none bg-gradient-to-b from-black/55 via-black/30 to-black/70" />
+      <div className="fixed inset-0 z-[1] pointer-events-none bg-gradient-to-b from-black/60 via-black/55 to-black/75" />
 
       {/* Legal watermark texture */}
       <div className="fixed inset-0 z-[2] pointer-events-none legal-watermark opacity-60" />
@@ -371,7 +371,7 @@ export default function LandingPage() {
 
           {steps.map(({ n, title, desc, icon: Icon }, i) => (
             <FadeUp key={n} delay={i * 0.15} className="relative">
-              <div className="frosted-card rounded-2xl p-8 h-full group hover:border-amber-500/20 transition-all duration-300">
+              <div className="frosted-card-dark rounded-2xl p-8 h-full group hover:border-amber-500/20 transition-all duration-300">
                 <div className="flex items-start gap-4 mb-5">
                   <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0 group-hover:bg-amber-500/20 transition-colors">
                     <Icon className="w-6 h-6 text-amber-400" />
@@ -381,7 +381,7 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <h3 className="font-serif text-xl font-semibold text-white mb-3">{title}</h3>
-                <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
+                <p className="text-white/60 text-sm leading-relaxed">{desc}</p>
               </div>
             </FadeUp>
           ))}
@@ -405,7 +405,7 @@ export default function LandingPage() {
             const a = accentClasses[accent]
             return (
               <FadeUp key={title} delay={i * 0.08}>
-                <div className="frosted-card rounded-2xl p-7 h-full group transition-all duration-300">
+                <div className="frosted-card-dark rounded-2xl p-7 h-full group transition-all duration-300">
                   <div className="flex items-start justify-between mb-5">
                     <div
                       className="w-11 h-11 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors border border-white/10"
@@ -417,7 +417,7 @@ export default function LandingPage() {
                     </span>
                   </div>
                   <h3 className="font-serif text-lg font-semibold text-white mb-2.5">{title}</h3>
-                  <p className="text-white/40 text-sm leading-relaxed">{desc}</p>
+                  <p className="text-white/60 text-sm leading-relaxed">{desc}</p>
                 </div>
               </FadeUp>
             )
@@ -441,7 +441,7 @@ export default function LandingPage() {
           {roles.map(({ name, desc, color, emoji }, i) => (
             <FadeUp key={name} delay={i * 0.06}>
               <div
-                className="frosted-card rounded-2xl p-6 group cursor-default transition-all duration-300 hover:scale-[1.02]"
+                className="frosted-card-dark rounded-2xl p-6 group cursor-default transition-all duration-300 hover:scale-[1.02]"
                 style={{ "--role-color": color } as React.CSSProperties}
               >
                 <div className="flex items-center gap-3 mb-3">
@@ -462,7 +462,7 @@ export default function LandingPage() {
                 >
                   {name}
                 </h3>
-                <p className="text-white/35 text-xs leading-relaxed">{desc}</p>
+                <p className="text-white/55 text-xs leading-relaxed">{desc}</p>
               </div>
             </FadeUp>
           ))}
