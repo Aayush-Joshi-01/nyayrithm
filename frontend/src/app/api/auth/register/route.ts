@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const KC_URL = process.env.NEXT_PUBLIC_KEYCLOAK_URL ?? "http://localhost:8080"
+// KEYCLOAK_URL = internal Docker network URL (http://keycloak:8080)
+// NEXT_PUBLIC_KEYCLOAK_URL = browser-facing URL (http://localhost:8080)
+// API routes run server-side inside Docker, so prefer KEYCLOAK_URL
+const KC_URL =
+  process.env.KEYCLOAK_URL ??
+  process.env.NEXT_PUBLIC_KEYCLOAK_URL ??
+  "http://localhost:8080"
 const KC_REALM = process.env.NEXT_PUBLIC_KEYCLOAK_REALM ?? "nyayrithm"
 const KC_CLIENT_ID = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID ?? "nyayrithm-app"
 const KC_ADMIN_USER = process.env.KEYCLOAK_ADMIN_USER ?? "admin"

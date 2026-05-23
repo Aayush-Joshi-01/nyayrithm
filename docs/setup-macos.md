@@ -68,21 +68,21 @@ docker --version          # Docker version 27+
 docker compose version    # Docker Compose version v2.30+
 ```
 
-### Step 2 — Install Node.js 24 LTS + pnpm 11
+### Step 2 — Install Node.js 24 LTS + Bun
 
 ```bash
 brew install node@24
 echo 'export PATH="/opt/homebrew/opt/node@24/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 
-# Install pnpm
-npm install -g pnpm@latest
+# Install Bun (JS runtime + package manager)
+curl -fsSL https://bun.sh/install | bash
 ```
 
 Verify:
 ```bash
 node --version    # v24.x.x
-pnpm --version    # 11.x.x
+bun --version     # 1.x.x
 ```
 
 ### Step 3 — Clone and configure
@@ -118,8 +118,11 @@ docker compose exec backend uv run alembic upgrade head
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API docs | http://localhost:8000/docs |
+| Keycloak admin | http://localhost:8080 (`admin` / `admin`) |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 | MinIO console | http://localhost:9001 (minioadmin / minioadmin) |
+
+> **Keycloak first-start:** Allow ~30 seconds after `docker compose up` for the `nyayrithm` realm to be imported. The frontend login/register won't work until this completes. Check progress with `docker compose logs keycloak`.
 
 ### Stopping and restarting
 
@@ -162,13 +165,13 @@ Close and reopen your terminal, then verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + pnpm 11
+### Step 3 — Install Node.js 24 LTS + Bun
 
 ```bash
 brew install node@24
 echo 'export PATH="/opt/homebrew/opt/node@24/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-npm install -g pnpm@latest
+curl -fsSL https://bun.sh/install | bash
 ```
 
 ### Step 4 — Install Redis
@@ -236,7 +239,7 @@ uv pip install -e ".[dev]"
 
 ```bash
 cd ../frontend
-pnpm install
+bun install
 ```
 
 ### Step 8 — Run (three terminal tabs)
@@ -258,8 +261,10 @@ uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulat
 **Tab 3 — Frontend:**
 ```bash
 cd nyayrithm/frontend
-pnpm dev
+bun dev
 ```
+
+> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running — start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 
@@ -430,7 +435,7 @@ uv run pytest --cov=app --cov-report=term-missing -v
 cd backend && uv run ruff check . && uv run mypy app/
 
 # Frontend
-cd frontend && pnpm lint && pnpm tsc --noEmit
+cd frontend && bun run lint && bun run tsc --noEmit
 ```
 
 ---
@@ -535,8 +540,8 @@ If that fails, check Redis is up (`redis-cli ping`) and `CELERY_BROKER_URL` in `
 Another process is on port 3000:
 ```bash
 lsof -ti:3000 | xargs kill -9
-pnpm dev
+bun dev
 # or use a different port:
-pnpm dev -- --port 3001
+bun dev --port 3001
 # update CORS_ORIGINS in .env to include http://localhost:3001
 ```

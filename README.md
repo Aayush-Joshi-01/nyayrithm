@@ -93,16 +93,19 @@ make env          # copies .env.example → .env
 nano .env         # or open in your editor
 
 # 4. Start everything
-make dev          # postgres + redis + qdrant + minio + backend + frontend
+make dev          # postgres + redis + qdrant + minio + keycloak + backend + frontend
 
 # 5. Apply database migrations
 make migrate
 ```
 
+> **First run:** Keycloak takes ~30 seconds to finish importing the realm on first start. The frontend is ready once http://localhost:8080 responds.
+
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API docs | http://localhost:8000/docs |
+| Keycloak admin | http://localhost:8080 (`admin` / `admin`) |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 | MinIO console | http://localhost:9001 (`minioadmin` / `minioadmin`) |
 
@@ -161,7 +164,7 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/1
 cd backend && uv pip install -e ".[dev]"
 
 # Frontend deps
-cd ../frontend && pnpm install
+cd ../frontend && bun install
 
 # Terminal 1 — API server
 cd backend && uv run uvicorn app.main:app --reload --port 8000
@@ -171,7 +174,7 @@ cd backend && uv run celery -A app.tasks.celery_app worker --loglevel=info \
     -Q evidence,simulation,default
 
 # Terminal 3 — Next.js dev server
-cd frontend && pnpm dev
+cd frontend && bun dev
 ```
 
 Open http://localhost:3000. No cloud accounts, no billing, no containers.
@@ -286,12 +289,12 @@ ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),   # premium reasoning
     "prosecutor":     ("openai",    "gpt-4o"),
     "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("gemini",    "gemini-2.0-flash"),  # free
-    "accused":        ("gemini",    "gemini-2.0-flash"),  # free
-    "witness":        ("ollama",    "llama3.1:8b"),        # local
+    "plaintiff":      ("gemini",    "gemini-2.5-flash"),   # free
+    "accused":        ("gemini",    "gemini-2.5-flash"),   # free
+    "witness":        ("ollama",    "llama3.1:8b"),         # local
     "investigator":   ("openai",    "gpt-4o"),
     "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("gemini",    "gemini-2.0-flash"),
+    "custom":         ("gemini",    "gemini-2.5-flash-lite"),
 }
 ```
 
@@ -391,11 +394,21 @@ Copy `.env.example` → `.env` then edit. All settings load through `backend/app
 | `CELERY_RESULT_BACKEND` | `redis://localhost:6379/1` | Celery result store |
 | `REDIS_URL` | `redis://localhost:6379/2` | App-level cache |
 
-### Auth
+### Auth / Keycloak
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `1440` | JWT expiry (24 hours) |
+| `NEXT_PUBLIC_KEYCLOAK_URL` | `http://localhost:8080` | Browser-facing Keycloak URL |
+| `KEYCLOAK_URL` | `http://localhost:8080` | Server-side URL (Docker: `http://keycloak:8080`) |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | `nyayrithm` | Keycloak realm name |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `nyayrithm-app` | Keycloak client (Direct Access Grants enabled) |
+| `KEYCLOAK_ADMIN_USER` | `admin` | Keycloak master-realm admin (server-side only) |
+| `KEYCLOAK_ADMIN_PASS` | `admin` | Keycloak master-realm admin password |
+
+> **Two-URL pattern:** `NEXT_PUBLIC_KEYCLOAK_URL` is the browser-facing URL; `KEYCLOAK_URL` is used server-side by Next.js API routes. Inside Docker, `KEYCLOAK_URL` must be `http://keycloak:8080` (the Docker service name). For `bun dev` outside Docker, both point to `http://localhost:8080`. The `make env` command creates `frontend/.env.local` with the correct local values automatically.
+
+> **`NEXT_PUBLIC_DEV_MODE=true`** — set this in `.env` to bypass authentication entirely in local dev (no Keycloak required).
 
 ---
 
@@ -573,15 +586,24 @@ nyayrithm/
 │   ├── alembic/             SQL migrations (raw SQL, no ORM)
 │   └── pyproject.toml
 ├── frontend/
-│   └── src/
-│       ├── app/             Next.js App Router pages
-│       ├── components/      SimulationShell, TurnFeed, AgentGraph, CitationChip, …
-│       ├── hooks/           useSimulationSocket, useCases, useEvidence
-│       ├── lib/             api.ts, ws.ts (WebSocket client with auto-reconnect)
-│       ├── store/           Zustand stores (simulation, case, ui)
-│       └── types/           TypeScript types mirroring backend models
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (auth)/          Login + signup pages (custom forms → Keycloak APIs)
+│   │   │   ├── api/auth/        Server-side auth routes (login, register, logout)
+│   │   │   ├── dashboard/       Protected dashboard pages
+│   │   │   ├── docs/            In-app documentation page
+│   │   │   └── page.tsx         Landing page (3D globe, agent roles, features)
+│   │   ├── components/      SimulationShell, TurnFeed, AgentGraph, CitationChip, …
+│   │   ├── hooks/           useSimulationSocket, useCases, useEvidence
+│   │   ├── lib/             api.ts, ws.ts (WebSocket client with auto-reconnect)
+│   │   ├── store/           Zustand stores (simulation, case, ui)
+│   │   └── types/           TypeScript types mirroring backend models
+│   ├── .env.local           Local dev env (created by `make env` — git-ignored)
+│   └── middleware.ts        Protects /dashboard/* via kc_access_token cookie
 ├── infra/
 │   ├── docker/              Dockerfiles + nginx config
+│   ├── keycloak/
+│   │   └── realm-export.json    Keycloak realm auto-imported on first start
 │   └── terraform/           Conditional AWS modules (VPC, RDS, ECS, S3, ElastiCache, …)
 ├── docs/
 │   ├── architecture.md      System design decisions + data flow diagrams

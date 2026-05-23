@@ -18,7 +18,7 @@ LLM_DEFAULT_PROVIDER=gemini
 ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),
     "prosecutor":     ("openai",    "gpt-4o"),
-    "witness":        ("gemini",    "gemini-2.0-flash"),
+    "witness":        ("gemini",    "gemini-2.5-flash"),
     ...
 }
 ```
@@ -222,15 +222,15 @@ You can combine multiple providers in a single simulation. Each agent uses its o
 ### Example: premium judge + free witnesses
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("anthropic", "claude-opus-4-5"),   # highest quality for rulings
-    "prosecutor":     ("openai",    "gpt-4o"),            # strong argument construction
+    "judge":          ("anthropic", "claude-opus-4-5"),        # highest quality for rulings
+    "prosecutor":     ("openai",    "gpt-4o"),                 # strong argument construction
     "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("gemini",    "gemini-2.0-flash"),  # free tier
-    "accused":        ("gemini",    "gemini-2.0-flash"),  # free tier
-    "witness":        ("ollama",    "llama3.1:8b"),        # fully local
-    "investigator":   ("openai",    "gpt-4o-mini"),       # cheaper
+    "plaintiff":      ("gemini",    "gemini-2.5-flash"),       # free tier
+    "accused":        ("gemini",    "gemini-2.5-flash"),       # free tier
+    "witness":        ("ollama",    "llama3.1:8b"),             # fully local
+    "investigator":   ("openai",    "gpt-4o-mini"),            # cheaper
     "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("gemini",    "gemini-1.5-flash-8b"),
+    "custom":         ("gemini",    "gemini-2.5-flash-lite"),  # free tier, lightest
 }
 ```
 

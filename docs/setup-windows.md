@@ -86,15 +86,17 @@ node --version   # v24.x.x
 npm --version    # 10+
 ```
 
-### Step 3 — Install pnpm 11
+### Step 3 — Install Bun
+
+Bun is the JavaScript runtime and package manager used by Nyayrithm (replaces pnpm/npm).
 
 ```powershell
-npm install -g pnpm@latest
+powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
-Verify:
+Close and reopen your terminal, then verify:
 ```powershell
-pnpm --version   # 11.x.x
+bun --version   # 1.x.x
 ```
 
 ### Step 4 — Clone and configure
@@ -135,17 +137,20 @@ docker compose exec backend uv run alembic upgrade head
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API docs | http://localhost:8000/docs |
+| Keycloak admin | http://localhost:8080 (`admin` / `admin`) |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 | MinIO console | http://localhost:9001 (minioadmin / minioadmin) |
+
+> **Keycloak first-start:** Allow ~30 seconds after `docker compose up` for Keycloak to import the `nyayrithm` realm. The frontend login/register won't work until this completes.
 
 ### Step 6 — Install frontend dependencies (first time only)
 
 ```powershell
 cd frontend
-pnpm install
+bun install
 ```
 
-The Next.js dev server runs inside the `frontend` Docker container — `pnpm install` is only needed if you want to run it natively outside Docker.
+The Next.js dev server runs inside the `frontend` Docker container — `bun install` is only needed if you want to run it natively outside Docker.
 
 ### Stopping and restarting
 
@@ -188,11 +193,11 @@ Close and reopen PowerShell, then verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + pnpm 11
+### Step 3 — Install Node.js 24 LTS + Bun
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
-npm install -g pnpm@latest
+powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
 ### Step 4 — Install Redis via WSL2
@@ -276,7 +281,7 @@ uv pip install -e ".[dev]"
 
 ```powershell
 cd ..\frontend
-pnpm install
+bun install
 ```
 
 ### Step 9 — Run (three terminals)
@@ -296,8 +301,10 @@ uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulat
 **Terminal 3 — Frontend:**
 ```powershell
 cd frontend
-pnpm dev
+bun dev
 ```
+
+> **Native dev + Keycloak:** Ensure `frontend\.env.local` exists with `KEYCLOAK_URL=http://localhost:8080`. The `make env` command (from Git Bash or WSL2) creates it automatically. You still need Keycloak running — start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 

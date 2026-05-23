@@ -7,6 +7,7 @@ This document covers system design decisions, data flow, and the reasoning behin
 ## Table of contents
 
 - [System overview](#system-overview)
+- [Authentication](#authentication)
 - [Data models](#data-models)
 - [Repository pattern](#repository-pattern)
 - [Agent system](#agent-system)
@@ -47,6 +48,80 @@ Celery workers (evidence queue + simulation queue)
   ├── EvidenceIngester → Chunker → Embedder → VectorStore.upsert()
   └── SimulationEngine.run_next_turn()
 ```
+
+---
+
+## Authentication
+
+Nyayrithm uses **Keycloak 26** as its identity provider. Users never see the Keycloak admin UI — authentication is fully embedded in the Next.js frontend through custom login and registration pages that call Keycloak APIs server-side.
+
+### Flow
+
+```
+Browser (login page)
+  │  POST /api/auth/login  { email, password }
+  ▼
+Next.js API Route (server-side, inside Docker)
+  │  POST http://keycloak:8080/realms/nyayrithm/protocol/openid-connect/token
+  │       grant_type=password, client_id=nyayrithm-app
+  ▼
+Keycloak 26 (Docker service, port 8080)
+  │  returns { access_token, refresh_token, expires_in }
+  ▼
+Next.js sets httpOnly cookies
+  │  kc_access_token  (httpOnly, maxAge=expires_in)
+  │  kc_refresh_token (httpOnly, maxAge=30 days)
+  ▼
+Browser redirects to /dashboard
+  │
+  │  All subsequent requests include cookies automatically
+  ▼
+Next.js middleware (src/middleware.ts)
+  │  checks kc_access_token cookie exists
+  │  redirects to /login if missing
+  ▼
+Protected pages (/dashboard/*)
+```
+
+### Registration flow
+
+```
+Browser (signup page)
+  │  POST /api/auth/register  { firstName, lastName, email, password }
+  ▼
+Next.js API Route
+  │  1. GET admin token from master realm (admin-cli, KEYCLOAK_ADMIN_USER/PASS)
+  │  2. POST /admin/realms/nyayrithm/users  (creates user via Admin REST API)
+  │  3. POST token endpoint (auto-login after successful registration)
+  ▼
+Sets cookies + redirects to /dashboard
+```
+
+### Two-URL pattern
+
+The login/register API routes run **server-side inside the Docker network**. Inside Docker, containers reach each other by service name — not `localhost`. This requires two separate Keycloak URL environment variables:
+
+| Variable | Value (Docker) | Value (native `bun dev`) | Used by |
+|----------|---------------|--------------------------|---------|
+| `NEXT_PUBLIC_KEYCLOAK_URL` | `http://localhost:8080` | `http://localhost:8080` | Browser JS (client-side) |
+| `KEYCLOAK_URL` | `http://keycloak:8080` | `http://localhost:8080` | Next.js API routes (server-side) |
+
+`KEYCLOAK_URL` is set in `docker-compose.yml` for the Docker case and in `frontend/.env.local` for native dev (`make env` creates this file automatically).
+
+### Key files
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/app/api/auth/login/route.ts` | `POST /api/auth/login` — Direct Access Grant → httpOnly cookies |
+| `frontend/src/app/api/auth/register/route.ts` | `POST /api/auth/register` — Admin API user creation → auto-login |
+| `frontend/src/app/api/auth/logout/route.ts` | `POST /api/auth/logout` — clears cookies |
+| `frontend/src/middleware.ts` | Protects `/dashboard/*` via cookie check |
+| `infra/keycloak/realm-export.json` | Realm config auto-imported on first Keycloak start |
+| `frontend/.env.local` | Local dev env vars (created by `make env`, git-ignored) |
+
+### Dev mode bypass
+
+Set `NEXT_PUBLIC_DEV_MODE=true` in `.env` to skip all authentication checks in local dev. This is useful when Keycloak is not running.
 
 ---
 

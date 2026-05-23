@@ -99,7 +99,7 @@ docker compose version    # Docker Compose version v2.30+
 docker run hello-world    # confirm it works
 ```
 
-### Step 2 — Install Node.js 24 LTS + pnpm 11
+### Step 2 — Install Node.js 24 LTS + Bun
 
 **Ubuntu / Debian (via NodeSource):**
 ```bash
@@ -117,15 +117,15 @@ sudo dnf install -y nodejs   # or use NodeSource: curl -fsSL https://rpm.nodesou
 sudo pacman -S nodejs npm
 ```
 
-**pnpm (all distros):**
+**Bun (all distros — JS runtime + package manager):**
 ```bash
-npm install -g pnpm@latest
+curl -fsSL https://bun.sh/install | bash
 ```
 
 Verify:
 ```bash
 node --version    # v24.x.x
-pnpm --version    # 11.x.x
+bun --version     # 1.x.x
 ```
 
 ### Step 3 — Clone and configure
@@ -161,8 +161,11 @@ docker compose exec backend uv run alembic upgrade head
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API docs | http://localhost:8000/docs |
+| Keycloak admin | http://localhost:8080 (`admin` / `admin`) |
 | Qdrant dashboard | http://localhost:6333/dashboard |
 | MinIO console | http://localhost:9001 (minioadmin / minioadmin) |
+
+> **Keycloak first-start:** Allow ~30 seconds after `docker compose up` for the `nyayrithm` realm to be imported. Check progress with `docker compose logs keycloak`.
 
 ```bash
 docker compose down              # stop, keep data
@@ -225,7 +228,7 @@ Verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + pnpm 11
+### Step 3 — Install Node.js 24 LTS + Bun
 
 (Same as Option A, Step 2 above.)
 
@@ -306,7 +309,7 @@ uv pip install -e ".[dev]"
 
 ```bash
 cd ../frontend
-pnpm install
+bun install
 ```
 
 ### Step 8 — Run (three terminals)
@@ -326,8 +329,10 @@ uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulat
 **Terminal 3 — Frontend:**
 ```bash
 cd nyayrithm/frontend
-pnpm dev
+bun dev
 ```
+
+> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running — start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 
@@ -508,7 +513,7 @@ uv run pytest --cov=app --cov-report=term-missing -v
 cd backend && uv run ruff check . && uv run mypy app/
 
 # Frontend
-cd frontend && pnpm lint && pnpm tsc --noEmit
+cd frontend && bun run lint && bun run tsc --noEmit
 ```
 
 ---
@@ -671,13 +676,12 @@ export CHROMA_SQLITE3_BINARY=1
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-### `node_modules` permission error with pnpm
+### `node_modules` error / corrupted install
 
 ```bash
-# Clear pnpm store and reinstall
-pnpm store prune
+# Clear Bun cache and reinstall
 rm -rf frontend/node_modules
-cd frontend && pnpm install
+cd frontend && bun install
 ```
 
 ### Ollama `out of memory` error

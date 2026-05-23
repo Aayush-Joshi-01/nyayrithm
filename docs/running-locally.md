@@ -32,6 +32,9 @@ What starts:
 - `redis` — Redis 7 on port 6379
 - `qdrant` — Qdrant vector DB on port 6333
 - `minio` — S3-compatible local storage on ports 9000 / 9001
+- `keycloak` — Keycloak 26 identity provider on port 8080
+
+> **Keycloak note:** On first start Keycloak takes ~30 seconds to import the realm. The `nyayrithm` realm and `nyayrithm-app` client are auto-created from `infra/keycloak/realm-export.json`. Admin UI: http://localhost:8080 (`admin` / `admin`).
 
 Open http://localhost:3000.
 
@@ -57,8 +60,8 @@ uv run celery -A app.tasks.celery_app worker --loglevel=info \
 
 # Frontend (new terminal)
 cd frontend
-pnpm install
-pnpm dev
+bun install
+bun dev
 ```
 
 ---
@@ -74,7 +77,7 @@ The lightest possible setup. Uses SQLite, Chroma (in-process), local file storag
 | Python 3.12+ | https://python.org or `pyenv install 3.12` |
 | `uv` (fast Python package manager) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | Node.js 20+ | https://nodejs.org or `nvm install 20` |
-| `pnpm` | `npm install -g pnpm` |
+| `bun` (JS runtime + package manager) | `curl -fsSL https://bun.sh/install \| bash` |
 | Redis | See below |
 
 **Redis without Docker:**
@@ -155,9 +158,11 @@ uv run celery -A app.tasks.celery_app worker --loglevel=info \
 **Terminal 3 — Frontend**
 ```bash
 cd frontend
-pnpm install
-pnpm dev
+bun install   # first time only
+bun dev
 ```
+
+> **Note:** For native dev (`bun dev` outside Docker), you need `frontend/.env.local` with Keycloak vars. Run `make env` — it creates both `.env` and `frontend/.env.local` automatically.
 
 Open http://localhost:3000.
 
@@ -291,7 +296,7 @@ cd backend && uv run pytest -v
 cd backend && uv run pytest tests/test_agents.py -v
 
 # Frontend linting + type check
-cd frontend && pnpm lint && pnpm tsc --noEmit
+cd frontend && bun run lint && bun run tsc --noEmit
 ```
 
 Tests use an in-memory SQLite database and mock LLM/vector store responses — no real API calls are made.
@@ -372,4 +377,12 @@ The model is downloaded on first use (~90 MB). Subsequent runs use the cached mo
 
 ### Frontend can't connect to backend
 
-Ensure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `.env`. The Next.js dev server reads this at build time — restart `pnpm dev` after changing it.
+Ensure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `.env`. The Next.js dev server reads this at build time — restart `bun dev` after changing it.
+
+### Login/register returns "Could not reach authentication server" (503)
+
+This usually means Next.js API routes can't reach Keycloak. Check:
+
+1. **Docker setup:** `KEYCLOAK_URL` must be `http://keycloak:8080` (the Docker service name), not `localhost:8080`. This is set automatically in `docker-compose.yml`.
+2. **Native dev:** Ensure `frontend/.env.local` exists with `KEYCLOAK_URL=http://localhost:8080`. Run `make env` to create it.
+3. **Keycloak not started:** Wait ~30 seconds after `make dev` for Keycloak to finish realm import. Check with `docker compose logs keycloak`.
