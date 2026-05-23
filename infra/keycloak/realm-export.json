@@ -1,0 +1,34 @@
+{
+  "realm": "nyayrithm",
+  "enabled": true,
+  "displayName": "Nyayrithm",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "clientId": "nyayrithm-app",
+      "name": "Nyayrithm App",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:3000"],
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Regular platform user" },
+      { "name": "admin", "description": "Platform administrator" }
+    ]
+  },
+  "defaultRoles": ["user"],
+  "smtpServer": {}
+}

@@ -1,0 +1,40 @@
+# Python virtual environment (biggest offender — can be GBs)
+.venv
+venv
+env
+
+# Byte-compiled / cache
+__pycache__
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Test / coverage artefacts
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+coverage.xml
+*.egg-info
+dist
+build
+
+# Local storage (evidence files uploaded in dev)
+storage/
+
+# Editor / OS
+.idea
+.vscode
+*.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docs / CI (not needed in image)
+docs/
+.github/
+*.md
