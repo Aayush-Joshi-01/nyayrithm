@@ -4,7 +4,7 @@ import dataclasses
 import mimetypes
 import os
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
@@ -26,7 +26,7 @@ async def _ev_repo(session=Depends(get_session)):
 
 @router.post("/cases/{case_id}/evidence/", response_model=EvidenceResponse, status_code=201)
 async def upload_evidence(
-    case_id: str,
+    case_id: UUID,
     file: UploadFile = File(...),
     title: str = "",
     description: str = "",
@@ -60,7 +60,7 @@ async def upload_evidence(
     # Trigger async ingestion
     from app.tasks.evidence_tasks import ingest_evidence
     ingest_evidence.delay(
-        str(created.id), case_id, key, mime_type
+        str(created.id), str(case_id), key, mime_type
     )
 
     return EvidenceResponse(**dataclasses.asdict(created))
@@ -68,12 +68,12 @@ async def upload_evidence(
 
 @router.get("/cases/{case_id}/evidence/", response_model=EvidenceListResponse)
 async def list_evidence(
-    case_id: str,
+    case_id: UUID,
     page: int = Query(1, ge=1),
     size: int = Query(20, le=100),
     repo=Depends(_ev_repo),
 ):
-    items, total = await repo.list(filters={"case_id": case_id}, page=page, size=size)
+    items, total = await repo.list(filters={"case_id": str(case_id)}, page=page, size=size)
     return EvidenceListResponse(
         items=[EvidenceResponse(**dataclasses.asdict(e)) for e in items],
         total=total, page=page, size=size,
@@ -81,42 +81,41 @@ async def list_evidence(
 
 
 @router.get("/cases/{case_id}/evidence/{evidence_id}", response_model=EvidenceResponse)
-async def get_evidence(case_id: str, evidence_id: str, repo=Depends(_ev_repo)):
-    ev = await repo.get(evidence_id)
-    if not ev or str(ev.case_id) != case_id:
+async def get_evidence(case_id: UUID, evidence_id: UUID, repo=Depends(_ev_repo)):
+    ev = await repo.get(str(evidence_id))
+    if not ev or str(ev.case_id) != str(case_id):
         raise HTTPException(status_code=404, detail="Evidence not found")
     return EvidenceResponse(**dataclasses.asdict(ev))
 
 
 @router.delete("/cases/{case_id}/evidence/{evidence_id}", status_code=204)
-async def delete_evidence(case_id: str, evidence_id: str, repo=Depends(_ev_repo)):
-    ev = await repo.get(evidence_id)
-    if not ev or str(ev.case_id) != case_id:
+async def delete_evidence(case_id: UUID, evidence_id: UUID, repo=Depends(_ev_repo)):
+    ev = await repo.get(str(evidence_id))
+    if not ev or str(ev.case_id) != str(case_id):
         raise HTTPException(status_code=404, detail="Evidence not found")
-    await repo.delete(evidence_id)
+    await repo.delete(str(evidence_id))
 
 
 @router.post("/cases/{case_id}/evidence/{evidence_id}/reindex", status_code=202)
-async def reindex_evidence(case_id: str, evidence_id: str, repo=Depends(_ev_repo)):
-    ev = await repo.get(evidence_id)
+async def reindex_evidence(case_id: UUID, evidence_id: UUID, repo=Depends(_ev_repo)):
+    ev = await repo.get(str(evidence_id))
     if not ev:
         raise HTTPException(status_code=404, detail="Evidence not found")
-    await repo.update(evidence_id, {"status": "pending"})
+    await repo.update(str(evidence_id), {"status": "pending"})
     from app.tasks.evidence_tasks import ingest_evidence
-    ingest_evidence.delay(evidence_id, case_id, ev.file_path, ev.mime_type)
+    ingest_evidence.delay(str(evidence_id), str(case_id), ev.file_path, ev.mime_type)
     return {"status": "reindex_queued"}
 
 
 @router.post("/cases/{case_id}/search", response_model=list[SearchResultSchema])
-async def search_evidence(case_id: str, body: SearchRequest, repo=Depends(_ev_repo)):
+async def search_evidence(case_id: UUID, body: SearchRequest, repo=Depends(_ev_repo)):
     from app.rag.retriever import EvidenceRetriever
     from app.vector_db.factory import get_vector_store
-    from uuid import UUID
 
     retriever = EvidenceRetriever(get_vector_store())
     results = await retriever.search_case(
         query=body.query,
-        case_id=UUID(case_id),
+        case_id=case_id,
         top_k=body.top_k,
         modality=body.modality,
     )

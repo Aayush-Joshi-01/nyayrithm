@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -53,24 +53,24 @@ async def list_cases(
 
 
 @router.get("/{case_id}", response_model=CaseResponse)
-async def get_case(case_id: str, repo=Depends(_get_case_repo)):
-    case = await repo.get(case_id)
+async def get_case(case_id: UUID, repo=Depends(_get_case_repo)):
+    case = await repo.get(str(case_id))
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
     return CaseResponse(**_case_to_dict(case))
 
 
 @router.put("/{case_id}", response_model=CaseResponse)
-async def update_case(case_id: str, body: CaseUpdate, repo=Depends(_get_case_repo)):
+async def update_case(case_id: UUID, body: CaseUpdate, repo=Depends(_get_case_repo)):
     data = body.model_dump(exclude_none=True)
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    updated = await repo.update(case_id, data)
+    updated = await repo.update(str(case_id), data)
     return CaseResponse(**_case_to_dict(updated))
 
 
 @router.delete("/{case_id}", status_code=204)
-async def delete_case(case_id: str, repo=Depends(_get_case_repo)):
-    deleted = await repo.delete(case_id)
+async def delete_case(case_id: UUID, repo=Depends(_get_case_repo)):
+    deleted = await repo.delete(str(case_id))
     if not deleted:
         raise HTTPException(status_code=404, detail="Case not found")
 

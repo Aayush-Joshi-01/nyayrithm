@@ -30,7 +30,7 @@ async def _agent_repo(session=Depends(get_session)):
 
 
 @router.post("/cases/{case_id}/simulations/", response_model=SimulationResponse, status_code=201)
-async def create_simulation(case_id: str, body: SimulationCreate, repo=Depends(_sim_repo)):
+async def create_simulation(case_id: UUID, body: SimulationCreate, repo=Depends(_sim_repo)):
     sim = Simulation(
         case_id=case_id,  # type: ignore
         title=body.title,
@@ -44,44 +44,44 @@ async def create_simulation(case_id: str, body: SimulationCreate, repo=Depends(_
 
 
 @router.get("/cases/{case_id}/simulations/", response_model=list[SimulationResponse])
-async def list_simulations(case_id: str, repo=Depends(_sim_repo)):
-    items, _ = await repo.list(filters={"case_id": case_id}, size=100)
+async def list_simulations(case_id: UUID, repo=Depends(_sim_repo)):
+    items, _ = await repo.list(filters={"case_id": str(case_id)}, size=100)
     return [SimulationResponse(**dataclasses.asdict(s)) for s in items]
 
 
 @router.get("/simulations/{sim_id}", response_model=SimulationResponse)
-async def get_simulation(sim_id: str, repo=Depends(_sim_repo)):
-    sim = await repo.get(sim_id)
+async def get_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
+    sim = await repo.get(str(sim_id))
     if not sim:
         raise HTTPException(status_code=404, detail="Simulation not found")
     return SimulationResponse(**dataclasses.asdict(sim))
 
 
 @router.post("/simulations/{sim_id}/start", status_code=202)
-async def start_simulation(sim_id: str, repo=Depends(_sim_repo)):
-    sim = await repo.get(sim_id)
+async def start_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
+    sim = await repo.get(str(sim_id))
     if not sim:
         raise HTTPException(status_code=404, detail="Simulation not found")
     if sim.status not in ("draft", "paused"):
         raise HTTPException(status_code=400, detail=f"Cannot start simulation in status '{sim.status}'")
-    await repo.update(sim_id, {
+    await repo.update(str(sim_id), {
         "status": "running",
         "started_at": datetime.now(timezone.utc).isoformat(),
     })
     from app.tasks.simulation_tasks import run_simulation_turn
-    run_simulation_turn.delay(sim_id)
-    return {"status": "started", "simulation_id": sim_id}
+    run_simulation_turn.delay(str(sim_id))
+    return {"status": "started", "simulation_id": str(sim_id)}
 
 
 @router.post("/simulations/{sim_id}/pause", status_code=202)
-async def pause_simulation(sim_id: str, repo=Depends(_sim_repo)):
-    await repo.update(sim_id, {"status": "paused"})
+async def pause_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
+    await repo.update(str(sim_id), {"status": "paused"})
     return {"status": "paused"}
 
 
 @router.post("/simulations/{sim_id}/stop", status_code=202)
-async def stop_simulation(sim_id: str, repo=Depends(_sim_repo)):
-    await repo.update(sim_id, {
+async def stop_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
+    await repo.update(str(sim_id), {
         "status": "completed",
         "ended_at": datetime.now(timezone.utc).isoformat(),
     })
@@ -89,19 +89,19 @@ async def stop_simulation(sim_id: str, repo=Depends(_sim_repo)):
 
 
 @router.get("/simulations/{sim_id}/agents", response_model=list[AgentResponse])
-async def list_agents(sim_id: str, repo=Depends(_agent_repo)):
-    items, _ = await repo.list(filters={"simulation_id": sim_id}, size=100)
+async def list_agents(sim_id: UUID, repo=Depends(_agent_repo)):
+    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100)
     return [AgentResponse(**dataclasses.asdict(a)) for a in items]
 
 
 @router.post("/simulations/{sim_id}/agents", response_model=AgentResponse, status_code=201)
-async def add_agent(sim_id: str, body: AgentCreate, repo=Depends(_agent_repo)):
+async def add_agent(sim_id: UUID, body: AgentCreate, repo=Depends(_agent_repo)):
     from app.llm.registry import ROLE_PROVIDER_MAP, _lazy_register
     _lazy_register()
     default_provider, default_model = ROLE_PROVIDER_MAP.get(body.role, ("openai", "gpt-4o"))
 
     defn = AgentDefinition(
-        simulation_id=UUID(sim_id),
+        simulation_id=sim_id,
         role=body.role,
         name=body.name,
         llm_provider=body.llm_provider or default_provider,
@@ -117,8 +117,8 @@ async def add_agent(sim_id: str, body: AgentCreate, repo=Depends(_agent_repo)):
 
 
 @router.get("/simulations/{sim_id}/graph", response_model=AgentGraphResponse)
-async def get_agent_graph(sim_id: str, repo=Depends(_agent_repo)):
-    items, _ = await repo.list(filters={"simulation_id": sim_id}, size=100)
+async def get_agent_graph(sim_id: UUID, repo=Depends(_agent_repo)):
+    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100)
     nodes = [
         AgentGraphNode(
             id=str(a.id),
