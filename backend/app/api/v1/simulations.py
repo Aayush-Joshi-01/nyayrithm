@@ -66,7 +66,7 @@ async def start_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
         raise HTTPException(status_code=400, detail=f"Cannot start simulation in status '{sim.status}'")
     await repo.update(str(sim_id), {
         "status": "running",
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(timezone.utc),
     })
     from app.tasks.simulation_tasks import run_simulation_turn
     run_simulation_turn.delay(str(sim_id))
@@ -83,14 +83,14 @@ async def pause_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
 async def stop_simulation(sim_id: UUID, repo=Depends(_sim_repo)):
     await repo.update(str(sim_id), {
         "status": "completed",
-        "ended_at": datetime.now(timezone.utc).isoformat(),
+        "ended_at": datetime.now(timezone.utc),
     })
     return {"status": "stopped"}
 
 
 @router.get("/simulations/{sim_id}/agents", response_model=list[AgentResponse])
 async def list_agents(sim_id: UUID, repo=Depends(_agent_repo)):
-    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100)
+    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100, order_by="spawned_at")
     return [AgentResponse(**dataclasses.asdict(a)) for a in items]
 
 
@@ -118,7 +118,7 @@ async def add_agent(sim_id: UUID, body: AgentCreate, repo=Depends(_agent_repo)):
 
 @router.get("/simulations/{sim_id}/graph", response_model=AgentGraphResponse)
 async def get_agent_graph(sim_id: UUID, repo=Depends(_agent_repo)):
-    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100)
+    items, _ = await repo.list(filters={"simulation_id": str(sim_id)}, size=100, order_by="spawned_at")
     nodes = [
         AgentGraphNode(
             id=str(a.id),

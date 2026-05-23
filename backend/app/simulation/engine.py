@@ -112,7 +112,7 @@ class SimulationEngine:
             }
 
             agent_defs, _ = await agent_repo.list(
-                filters={"simulation_id": str(simulation.id)}, size=100
+                filters={"simulation_id": str(simulation.id)}, size=100, order_by="spawned_at"
             )
 
             orchestrator = await self.build_orchestrator(
@@ -128,13 +128,13 @@ class SimulationEngine:
             # Persist updated turn count
             await sim_repo.update(simulation_id, {
                 "current_turn": simulation.current_turn,
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc),
             })
 
             if simulation.current_turn >= simulation.max_turns:
                 await sim_repo.update(simulation_id, {
                     "status": "completed",
-                    "ended_at": datetime.now(timezone.utc).isoformat(),
+                    "ended_at": datetime.now(timezone.utc),
                 })
                 if broadcast_fn:
                     await broadcast_fn("simulation.completed", {"simulation_id": simulation_id})
