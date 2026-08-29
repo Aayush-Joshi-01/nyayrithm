@@ -36,16 +36,20 @@ export function SimulationPrompt({ caseId }: Props) {
   }, [])
 
   const createMutation = useMutation({
-    mutationFn: (title: string) =>
-      simulationsApi.create(caseId, { title, mode, max_turns: 50 }),
+    mutationFn: (scenario: string) =>
+      simulationsApi.create(caseId, {
+        title: scenario || `${mode.charAt(0).toUpperCase() + mode.slice(1)} Simulation`,
+        mode,
+        max_turns: 50,
+        config: { scenario, mode },
+      }),
     onSuccess: (sim) => {
       router.push(`/dashboard/${caseId}/simulation/${sim.id}`)
     },
   })
 
   const handleSubmit = () => {
-    const title = message.trim() || `${mode.charAt(0).toUpperCase() + mode.slice(1)} Simulation`
-    createMutation.mutate(title)
+    createMutation.mutate(message.trim())
   }
 
   const handleQuickAction = (action: typeof QUICK_ACTIONS[0]) => {
@@ -107,6 +111,12 @@ export function SimulationPrompt({ caseId }: Props) {
           </Button>
         </div>
       </div>
+
+      {createMutation.isError && (
+        <p className="text-center text-xs text-red-400 mt-3">
+          Could not create the simulation. Check that the backend is running and try again.
+        </p>
+      )}
 
       {/* Quick actions */}
       <div className="flex items-center justify-center flex-wrap gap-2 mt-4">

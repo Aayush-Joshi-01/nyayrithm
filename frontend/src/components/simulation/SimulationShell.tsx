@@ -2,13 +2,14 @@
 
 import { useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Play, Pause, Square, Share2 } from "lucide-react"
+import { Play, Pause, Square } from "lucide-react"
 import { simulationsApi } from "@/lib/api"
 import { useSimulationStore } from "@/store/simulationStore"
 import { SimulationWebSocket } from "@/lib/ws"
 import { TurnFeed } from "./TurnFeed"
 import { AgentPanel } from "./AgentPanel"
 import { AgentGraph } from "./AgentGraph"
+import { AgentSetup } from "./AgentSetup"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,24 +25,30 @@ const STATUS_BADGE: Record<string, { label: string; variant: "success" | "warnin
 
 export function SimulationShell({ simId }: { caseId: string; simId: string }) {
   const qc = useQueryClient()
-  const { setTurns, setAgents, setGraph, setStatus, handleWsEvent, status, currentTurn } =
+  const { setTurns, setAgents, setGraph, setStatus, handleWsEvent, status, currentTurn, error, clearError } =
     useSimulationStore()
+
+  const live = status === "running"
 
   const { data: sim } = useQuery({
     queryKey: ["simulation", simId],
     queryFn: () => simulationsApi.get(simId),
+    refetchInterval: live ? 5000 : false,
   })
   const { data: turnsData } = useQuery({
     queryKey: ["turns", simId],
     queryFn: () => simulationsApi.listTurns(simId, { size: 200 }),
+    refetchInterval: live ? 5000 : false,
   })
   const { data: agents } = useQuery({
     queryKey: ["agents", simId],
     queryFn: () => simulationsApi.listAgents(simId),
+    refetchInterval: live ? 5000 : false,
   })
   const { data: graph } = useQuery({
     queryKey: ["graph", simId],
     queryFn: () => simulationsApi.getGraph(simId),
+    refetchInterval: live ? 5000 : false,
   })
 
   useEffect(() => { if (turnsData?.items) setTurns(turnsData.items) }, [turnsData, setTurns])
@@ -61,15 +68,18 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
 
   const startMutation = useMutation({
     mutationFn: () => simulationsApi.start(simId),
-    onSuccess: () => { setStatus("running"); qc.invalidateQueries({ queryKey: ["simulation", simId] }) },
+    onSuccess: () => { clearError(); setStatus("running"); qc.invalidateQueries({ queryKey: ["simulation", simId] }) },
+    onError: () => useSimulationStore.setState({ error: "Failed to start the simulation." }),
   })
   const pauseMutation = useMutation({
     mutationFn: () => simulationsApi.pause(simId),
     onSuccess: () => setStatus("paused"),
+    onError: () => useSimulationStore.setState({ error: "Failed to pause." }),
   })
   const stopMutation = useMutation({
     mutationFn: () => simulationsApi.stop(simId),
     onSuccess: () => setStatus("completed"),
+    onError: () => useSimulationStore.setState({ error: "Failed to stop." }),
   })
 
   const statusCfg = STATUS_BADGE[status] ?? STATUS_BADGE.draft
@@ -91,7 +101,7 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          {(status === "draft" || status === "paused") && (
+          {(status === "paused" || status === "failed") && (
             <Button
               size="sm"
               variant="ghost"
@@ -100,7 +110,7 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
               className="text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 h-8"
             >
               <Play className="w-3.5 h-3.5 mr-1" />
-              {status === "paused" ? "Resume" : "Start"}
+              Resume
             </Button>
           )}
           {status === "running" && (
@@ -114,7 +124,7 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
               Pause
             </Button>
           )}
-          {status !== "completed" && status !== "failed" && (
+          {(status === "running" || status === "paused") && (
             <Button
               size="sm"
               variant="ghost"
@@ -125,13 +135,24 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
               Stop
             </Button>
           )}
-          <Button size="sm" variant="ghost" className="text-white/30 h-8 w-8 p-0">
-            <Share2 className="w-3.5 h-3.5" />
-          </Button>
         </div>
       </div>
 
-      {/* Main */}
+      {error && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs text-red-300 flex-shrink-0">
+          <span className="truncate">{error}</span>
+          <button onClick={clearError} className="text-red-300/60 hover:text-red-300 flex-shrink-0">
+            <Square className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+
+      {status === "draft" ? (
+        <div className="flex-1 overflow-y-auto">
+          <AgentSetup simId={simId} onStarted={() => setStatus("running")} />
+        </div>
+      ) : (
+      /* Main */
       <Tabs defaultValue="courtroom" className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-shrink-0 border-b border-white/8 px-4 py-1.5 bg-card/30">
           <TabsList className="h-8 bg-white/5 gap-1">
@@ -155,6 +176,7 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
           <AgentGraph />
         </TabsContent>
       </Tabs>
+      )}
     </div>
   )
 }

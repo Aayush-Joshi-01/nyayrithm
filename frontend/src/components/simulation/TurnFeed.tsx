@@ -78,7 +78,7 @@ function TurnBubble({ turn, simId, agentName, role }: {
           ) : (
             <>
               <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{displayContent}</p>
-              {turn.citations.length > 0 && (
+              {(turn.citations?.length ?? 0) > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {turn.citations.map((c, i) => <CitationChip key={i} citation={c} />)}
                 </div>

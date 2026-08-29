@@ -17,6 +17,11 @@ export class SimulationWebSocket {
 
   connect(): void {
     this._closed = false;
+
+    // Don't stack sockets — a CONNECTING/OPEN socket is already (re)connecting.
+    const rs = this.ws?.readyState;
+    if (rs === WebSocket.CONNECTING || rs === WebSocket.OPEN) return;
+
     this.ws = new WebSocket(`${WS_BASE}/ws/simulations/${this._simId}`);
 
     this.ws.onmessage = (e) => {
@@ -33,9 +38,8 @@ export class SimulationWebSocket {
       }
     };
 
-    this.ws.onerror = () => {
-      this.ws?.close();
-    };
+    // Let onclose drive reconnection; closing here would just double it up.
+    this.ws.onerror = () => {};
 
     this.ws.onopen = () => {
       this.reconnectDelay = 1000;
