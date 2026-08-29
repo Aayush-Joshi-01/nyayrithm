@@ -37,13 +37,21 @@ class AgentGraph:
         parent_id: str,
         auto: bool = False,
         persist_fn=None,  # async callable to persist AgentDefinition to DB
+        agent_id: UUID | None = None,  # preserve identity when reconstructing from DB
     ) -> AgentNode:
         from app.agents.roles import ROLE_AGENT_MAP
         from uuid import uuid4
 
-        agent_id = uuid4()
-        provider = spawn_request.llm_provider
-        model = spawn_request.llm_model
+        agent_id = agent_id or uuid4()
+
+        # Fall back to the role's configured default provider/model, not a
+        # hardcoded one, so spawned agents run on the same stack as the roster.
+        from app.llm.registry import ROLE_PROVIDER_MAP
+        role_provider, role_model = ROLE_PROVIDER_MAP.get(
+            spawn_request.role, ("gemini", "gemini-flash-lite-latest")
+        )
+        provider = spawn_request.llm_provider or role_provider
+        model = spawn_request.llm_model or role_model
 
         definition = AgentDefinition(
             id=agent_id,
@@ -54,8 +62,8 @@ class AgentGraph:
             role=spawn_request.role,
             name=spawn_request.name or f"{spawn_request.role.title()} #{len(self.nodes)+1}",
             persona=spawn_request.persona,
-            llm_provider=provider or "openai",
-            llm_model=model or "gpt-4o",
+            llm_provider=provider,
+            llm_model=model,
             system_prompt="",  # will be built dynamically
             initial_instruction=spawn_request.initial_instruction,
         )

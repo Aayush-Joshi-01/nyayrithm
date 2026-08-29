@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import ReactFlow, {
   Background,
   Controls,
@@ -14,6 +14,7 @@ import ReactFlow, {
   Position,
   NodeProps,
   MarkerType,
+  ReactFlowInstance,
 } from "reactflow"
 import "reactflow/dist/style.css"
 import { useSimulationStore } from "@/store/simulationStore"
@@ -41,14 +42,24 @@ function buildLayout(
     level++
   }
 
-  const countPerLevel: Record<number, number> = {}
+  // count per level first so each row can be centred
+  const totalPerLevel: Record<number, number> = {}
+  for (const n of nodes) {
+    const lv = levels[n.id] ?? 0
+    totalPerLevel[lv] = (totalPerLevel[lv] ?? 0) + 1
+  }
+
+  const COL = 230
+  const ROW = 160
+  const seen: Record<number, number> = {}
   const positions: { x: number; y: number }[] = []
 
   for (const n of nodes) {
     const lv = levels[n.id] ?? 0
-    const idx = countPerLevel[lv] ?? 0
-    countPerLevel[lv] = idx + 1
-    positions.push({ x: idx * 200, y: lv * 140 })
+    const idx = seen[lv] ?? 0
+    seen[lv] = idx + 1
+    const rowWidth = (totalPerLevel[lv] - 1) * COL
+    positions.push({ x: idx * COL - rowWidth / 2, y: lv * ROW })
   }
 
   return positions
@@ -115,6 +126,7 @@ export function AgentGraph() {
   const { graph } = useSimulationStore()
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([])
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([])
+  const instanceRef = useRef<ReactFlowInstance | null>(null)
 
   useEffect(() => {
     const positions = buildLayout(graph.nodes)
@@ -147,10 +159,15 @@ export function AgentGraph() {
 
     setRfNodes(nodes)
     setRfEdges(edges)
+    // Re-fit after the DOM paints the new node set.
+    requestAnimationFrame(() => {
+      instanceRef.current?.fitView({ padding: 0.25, duration: 300 })
+    })
   }, [graph, setRfNodes, setRfEdges])
 
-  const onInit = useCallback((instance: { fitView: () => void }) => {
-    setTimeout(() => instance.fitView(), 50)
+  const onInit = useCallback((instance: ReactFlowInstance) => {
+    instanceRef.current = instance
+    setTimeout(() => instance.fitView({ padding: 0.25 }), 50)
   }, [])
 
   return (

@@ -15,15 +15,11 @@ T = TypeVar("T")
 
 
 def _serialize(value: Any) -> Any:
-    """Recursively make values JSON / Postgres safe."""
+    """Make values safe for asyncpg binding."""
     if isinstance(value, UUID):
         return str(value)
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {k: _serialize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_serialize(v) for v in value]
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, default=str)
     return value
 
 

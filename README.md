@@ -185,19 +185,19 @@ Edit `backend/app/llm/registry.py`:
 
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.5-flash"),       # best free reasoning
-    "prosecutor":     ("gemini", "gemini-2.5-flash"),
-    "defense":        ("gemini", "gemini-2.5-flash"),
-    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),  # lightest model
-    "accused":        ("gemini", "gemini-2.5-flash-lite"),
-    "witness":        ("gemini", "gemini-2.5-flash-lite"),
-    "investigator":   ("gemini", "gemini-2.5-flash"),
-    "expert_witness": ("gemini", "gemini-2.5-flash"),
-    "custom":         ("gemini", "gemini-2.5-flash-lite"),
+    "judge":          ("gemini", "gemini-flash-lite-latest"),       # best free reasoning
+    "prosecutor":     ("gemini", "gemini-flash-lite-latest"),
+    "defense":        ("gemini", "gemini-flash-lite-latest"),
+    "plaintiff":      ("gemini", "gemini-flash-lite-latest"),  # lightest model
+    "accused":        ("gemini", "gemini-flash-lite-latest"),
+    "witness":        ("gemini", "gemini-flash-lite-latest"),
+    "investigator":   ("gemini", "gemini-flash-lite-latest"),
+    "expert_witness": ("gemini", "gemini-flash-lite-latest"),
+    "custom":         ("gemini", "gemini-flash-lite-latest"),
 }
 ```
 
-> ⚠️ **Gemini 2.0 Flash was deprecated (shut down June 1, 2026).** Use `gemini-2.5-flash` or `gemini-2.5-flash-lite`.
+> ⚠️ **Gemini 2.0 Flash was deprecated (shut down June 1, 2026).** Use `gemini-flash-lite-latest` or `gemini-flash-lite-latest`.
 
 **Free tier quotas (May 2026):**
 
@@ -248,7 +248,7 @@ LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...
 ```
 
-Recommended free models: `gemini-2.5-flash` (best reasoning) · `gemini-2.5-flash-lite` (lightest).
+Default model: `gemini-flash-lite-latest` (an alias that always resolves to Google's newest flash-lite). For heavier reasoning use `gemini-flash-latest`. The Gemini provider retries `429`/`5xx` with exponential backoff (honouring the server's `retryDelay`), and `SIMULATION_TURN_DELAY_SECONDS` paces the turn loop under the free-tier request-per-minute limit.
 See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/llm-providers.md`](docs/llm-providers.md).
 
 ### Ollama — fully local, offline
@@ -289,12 +289,12 @@ ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),   # premium reasoning
     "prosecutor":     ("openai",    "gpt-4o"),
     "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("gemini",    "gemini-2.5-flash"),   # free
-    "accused":        ("gemini",    "gemini-2.5-flash"),   # free
+    "plaintiff":      ("gemini",    "gemini-flash-lite-latest"),   # free
+    "accused":        ("gemini",    "gemini-flash-lite-latest"),   # free
     "witness":        ("ollama",    "llama3.1:8b"),         # local
     "investigator":   ("openai",    "gpt-4o"),
     "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("gemini",    "gemini-2.5-flash-lite"),
+    "custom":         ("gemini",    "gemini-flash-lite-latest"),
 }
 ```
 

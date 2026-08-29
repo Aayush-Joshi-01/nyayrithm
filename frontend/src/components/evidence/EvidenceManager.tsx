@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Upload, FileText, Film, Mic, Image, RefreshCw, Loader2 } from "lucide-react";
+import { Upload, FileText, Film, Mic, Image, RefreshCw, Loader2, Trash2 } from "lucide-react";
 import { evidenceApi } from "@/lib/api";
 import { cn, formatBytes } from "@/lib/utils";
 import type { Evidence } from "@/types/api";
@@ -35,6 +35,11 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
 
   const reindexMutation = useMutation({
     mutationFn: (evId: string) => evidenceApi.reindex(caseId, evId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["evidence", caseId] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (evId: string) => evidenceApi.delete(caseId, evId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["evidence", caseId] }),
   });
 
@@ -132,15 +137,26 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
                   <span className={cn("text-xs px-2 py-0.5 rounded-full", STATUS_STYLES[ev.status])}>
                     {ev.status}
                   </span>
-                  {ev.status === "error" && (
+                  {(ev.status === "error" || ev.status === "indexed") && (
                     <button
                       onClick={() => reindexMutation.mutate(ev.id)}
-                      title="Retry indexing"
+                      disabled={reindexMutation.isPending}
+                      title="Re-index"
                       className="text-muted-foreground hover:text-foreground"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      if (confirm(`Remove "${ev.title}"?`)) deleteMutation.mutate(ev.id);
+                    }}
+                    disabled={deleteMutation.isPending}
+                    title="Remove evidence"
+                    className="text-muted-foreground hover:text-red-400"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );

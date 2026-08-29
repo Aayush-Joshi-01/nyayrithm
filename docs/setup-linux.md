@@ -413,26 +413,26 @@ Update `backend/app/llm/registry.py`:
 
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.5-flash"),
-    "prosecutor":     ("gemini", "gemini-2.5-flash"),
-    "defense":        ("gemini", "gemini-2.5-flash"),
-    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),   # lightest
-    "accused":        ("gemini", "gemini-2.5-flash-lite"),
-    "witness":        ("gemini", "gemini-2.5-flash-lite"),
-    "investigator":   ("gemini", "gemini-2.5-flash"),
-    "expert_witness": ("gemini", "gemini-2.5-flash"),
-    "custom":         ("gemini", "gemini-2.5-flash-lite"),
+    "judge":          ("gemini", "gemini-flash-lite-latest"),
+    "prosecutor":     ("gemini", "gemini-flash-lite-latest"),
+    "defense":        ("gemini", "gemini-flash-lite-latest"),
+    "plaintiff":      ("gemini", "gemini-flash-lite-latest"),   # lightest
+    "accused":        ("gemini", "gemini-flash-lite-latest"),
+    "witness":        ("gemini", "gemini-flash-lite-latest"),
+    "investigator":   ("gemini", "gemini-flash-lite-latest"),
+    "expert_witness": ("gemini", "gemini-flash-lite-latest"),
+    "custom":         ("gemini", "gemini-flash-lite-latest"),
 }
 ```
 
-> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Use `gemini-2.5-flash` or `gemini-2.5-flash-lite` instead.
+> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Use `gemini-flash-lite-latest` or `gemini-flash-lite-latest` instead.
 
 **Free tier quotas (May 2026):**
 
 | Model | RPD (requests/day) | Notes |
 |-------|-------------------|-------|
-| `gemini-2.5-flash` | 1,500 | Best reasoning on free tier |
-| `gemini-2.5-flash-lite` | 1,500 | Lightest, good for simple roles |
+| `gemini-flash-lite-latest` | 1,500 | Best reasoning on free tier |
+| `gemini-flash-lite-latest` | 1,500 | Lightest, good for simple roles |
 | `gemini-2.5-pro` | 50 | Very limited — use sparingly |
 
 ### OpenAI
@@ -473,12 +473,12 @@ ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),
     "prosecutor":     ("openai",    "gpt-4o"),
     "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("gemini",    "gemini-2.5-flash"),    # free
-    "accused":        ("gemini",    "gemini-2.5-flash"),    # free
+    "plaintiff":      ("gemini",    "gemini-flash-lite-latest"),    # free
+    "accused":        ("gemini",    "gemini-flash-lite-latest"),    # free
     "witness":        ("ollama",    "llama3.1:8b"),          # local GPU
     "investigator":   ("openai",    "gpt-4o-mini"),
     "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("gemini",    "gemini-2.5-flash-lite"),
+    "custom":         ("gemini",    "gemini-flash-lite-latest"),
 }
 ```
 

@@ -27,6 +27,12 @@ class LocalFileStorage:
     async def download(self, key: str) -> bytes:
         return self._path(key).read_bytes()
 
+    async def localize(self, key: str) -> str:
+        p = self._path(key)
+        if not p.exists():
+            raise FileNotFoundError(f"Stored file not found: {key} ({p})")
+        return str(p)
+
     async def delete(self, key: str) -> None:
         p = self._path(key)
         if p.exists():

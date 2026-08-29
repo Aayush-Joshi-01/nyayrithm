@@ -26,8 +26,8 @@ export function CitationChip({ citation }: { citation: Citation }) {
         )}
       >
         <Icon className="w-3 h-3" />
-        <span className="font-mono">{citation.evidence_title ?? citation.evidence_id.slice(0, 8)}</span>
-        <span className="text-amber-400/60">#{citation.chunk_index}</span>
+        <span className="font-mono">{citation.evidence_title ?? (citation.evidence_id ?? "evidence").slice(0, 8)}</span>
+        <span className="text-amber-400/60">#{citation.chunk_index ?? 0}</span>
       </button>
 
       {open && (
@@ -37,7 +37,7 @@ export function CitationChip({ citation }: { citation: Citation }) {
             <div className="flex items-center gap-1.5 font-semibold text-foreground">
               <Icon className="w-3.5 h-3.5 text-amber-400" />
               {citation.evidence_title ?? "Evidence"}
-              <span className="ml-auto text-muted-foreground">score: {citation.score.toFixed(2)}</span>
+              <span className="ml-auto text-muted-foreground">score: {(citation.score ?? 0).toFixed(2)}</span>
             </div>
             <p className="text-muted-foreground leading-relaxed line-clamp-6">
               {citation.chunk_text}

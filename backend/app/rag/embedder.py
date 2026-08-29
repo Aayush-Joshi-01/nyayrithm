@@ -52,6 +52,57 @@ class OpenAIEmbedder:
         return await self.embed_text(inputs.get("text", ""))
 
 
+class GeminiEmbedder:
+    """Google Gemini embedder, implemented over the REST API via httpx
+    (no `google-genai` SDK dependency needed)."""
+
+    modalities = ["text"]
+    dimension = 768
+
+    # gemini-embedding-001 returns 3072 dims unless outputDimensionality is set,
+    # so we always request 768 explicitly to keep vector length stable and match
+    # the Qdrant collection created from `self.dimension`.
+    def __init__(self, model: str = "gemini-embedding-001", api_key: str = "") -> None:
+        self._model = model
+        self._api_key = api_key
+
+    async def embed_text(self, text: str) -> list[float]:
+        import asyncio
+        import random
+
+        import httpx
+
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:embedContent"
+        body = {
+            "model": f"models/{self._model}",
+            "content": {"parts": [{"text": text}]},
+            "outputDimensionality": self.dimension,
+        }
+        max_retries = 6
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            for attempt in range(max_retries + 1):
+                resp = await client.post(url, params={"key": self._api_key}, json=body)
+                if resp.status_code in (429, 500, 502, 503, 504) and attempt < max_retries:
+                    # exponential backoff with full jitter
+                    await asyncio.sleep(random.uniform(4.0, min(4.0 * (2 ** attempt), 90.0)))
+                    continue
+                resp.raise_for_status()
+                values = resp.json()["embedding"]["values"]
+                # Some models ignore outputDimensionality; hard-trim as a safety net.
+                return values[: self.dimension]
+        resp.raise_for_status()
+        return []
+
+    async def embed_image(self, image_bytes: bytes) -> list[float]:
+        raise NotImplementedError("Gemini image embeddings not supported here")
+
+    async def embed_audio(self, audio_bytes: bytes) -> list[float]:
+        raise NotImplementedError("Transcribe audio first, then embed as text")
+
+    async def embed_multimodal(self, inputs: dict) -> list[float]:
+        return await self.embed_text(inputs.get("text", ""))
+
+
 class SentenceTransformerEmbedder:
     """Local embedder — no API key needed. Good for offline/air-gapped deployments."""
 

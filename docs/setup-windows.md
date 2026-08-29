@@ -371,19 +371,19 @@ Update `backend/app/llm/registry.py` for best free-tier model assignments:
 
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.5-flash"),         # best free reasoning
-    "prosecutor":     ("gemini", "gemini-2.5-flash"),
-    "defense":        ("gemini", "gemini-2.5-flash"),
-    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),    # lightest / most quota
-    "accused":        ("gemini", "gemini-2.5-flash-lite"),
-    "witness":        ("gemini", "gemini-2.5-flash-lite"),
-    "investigator":   ("gemini", "gemini-2.5-flash"),
-    "expert_witness": ("gemini", "gemini-2.5-flash"),
-    "custom":         ("gemini", "gemini-2.5-flash-lite"),
+    "judge":          ("gemini", "gemini-flash-lite-latest"),         # best free reasoning
+    "prosecutor":     ("gemini", "gemini-flash-lite-latest"),
+    "defense":        ("gemini", "gemini-flash-lite-latest"),
+    "plaintiff":      ("gemini", "gemini-flash-lite-latest"),    # lightest / most quota
+    "accused":        ("gemini", "gemini-flash-lite-latest"),
+    "witness":        ("gemini", "gemini-flash-lite-latest"),
+    "investigator":   ("gemini", "gemini-flash-lite-latest"),
+    "expert_witness": ("gemini", "gemini-flash-lite-latest"),
+    "custom":         ("gemini", "gemini-flash-lite-latest"),
 }
 ```
 
-> ⚠️ **Note:** Gemini 2.0 Flash was deprecated and shut down June 1, 2026. Use `gemini-2.5-flash` or `gemini-2.5-flash-lite` instead.
+> ⚠️ **Note:** Gemini 2.0 Flash was deprecated and shut down June 1, 2026. Use `gemini-flash-lite-latest` or `gemini-flash-lite-latest` instead.
 
 **Free tier quotas (May 2026):**
 
@@ -421,7 +421,7 @@ Edit `backend/app/llm/registry.py`:
 ROLE_PROVIDER_MAP = {
     "judge":      ("anthropic", "claude-opus-4-5"),     # premium
     "prosecutor": ("openai",    "gpt-4o"),
-    "witness":    ("gemini",    "gemini-2.5-flash"),     # free
+    "witness":    ("gemini",    "gemini-flash-lite-latest"),     # free
     "accused":    ("ollama",    "llama3.1:8b"),          # local
     ...
 }

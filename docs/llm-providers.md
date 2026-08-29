@@ -18,7 +18,7 @@ LLM_DEFAULT_PROVIDER=gemini
 ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),
     "prosecutor":     ("openai",    "gpt-4o"),
-    "witness":        ("gemini",    "gemini-2.5-flash"),
+    "witness":        ("gemini",    "gemini-flash-lite-latest"),
     ...
 }
 ```
@@ -38,7 +38,7 @@ Google AI Studio provides a free tier with no credit card required:
 | Gemini 2.5 Flash-Lite | 1,500 | Lightest model, most quota-efficient |
 | Gemini 2.5 Pro | 50 | Very limited free quota — use sparingly |
 
-> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Migrate any existing configs to `gemini-2.5-flash` or `gemini-2.5-flash-lite`.
+> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Migrate any existing configs to `gemini-flash-lite-latest` or `gemini-flash-lite-latest`.
 
 For most simulations (< 20 turns), **Gemini 2.5 Flash** on the free tier is sufficient.
 
@@ -51,15 +51,15 @@ GEMINI_API_KEY=AIza...          # from https://aistudio.google.com/app/apikey
 ### Recommended role assignments (free tier)
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-2.5-flash"),       # best free reasoning
-    "prosecutor":     ("gemini", "gemini-2.5-flash"),
-    "defense":        ("gemini", "gemini-2.5-flash"),
-    "plaintiff":      ("gemini", "gemini-2.5-flash-lite"),  # lightest / most quota
-    "accused":        ("gemini", "gemini-2.5-flash-lite"),
-    "witness":        ("gemini", "gemini-2.5-flash-lite"),
-    "investigator":   ("gemini", "gemini-2.5-flash"),
-    "expert_witness": ("gemini", "gemini-2.5-flash"),
-    "custom":         ("gemini", "gemini-2.5-flash-lite"),
+    "judge":          ("gemini", "gemini-flash-lite-latest"),       # best free reasoning
+    "prosecutor":     ("gemini", "gemini-flash-lite-latest"),
+    "defense":        ("gemini", "gemini-flash-lite-latest"),
+    "plaintiff":      ("gemini", "gemini-flash-lite-latest"),  # lightest / most quota
+    "accused":        ("gemini", "gemini-flash-lite-latest"),
+    "witness":        ("gemini", "gemini-flash-lite-latest"),
+    "investigator":   ("gemini", "gemini-flash-lite-latest"),
+    "expert_witness": ("gemini", "gemini-flash-lite-latest"),
+    "custom":         ("gemini", "gemini-flash-lite-latest"),
 }
 ```
 
@@ -225,12 +225,12 @@ ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),        # highest quality for rulings
     "prosecutor":     ("openai",    "gpt-4o"),                 # strong argument construction
     "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("gemini",    "gemini-2.5-flash"),       # free tier
-    "accused":        ("gemini",    "gemini-2.5-flash"),       # free tier
+    "plaintiff":      ("gemini",    "gemini-flash-lite-latest"),       # free tier
+    "accused":        ("gemini",    "gemini-flash-lite-latest"),       # free tier
     "witness":        ("ollama",    "llama3.1:8b"),             # fully local
     "investigator":   ("openai",    "gpt-4o-mini"),            # cheaper
     "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("gemini",    "gemini-2.5-flash-lite"),  # free tier, lightest
+    "custom":         ("gemini",    "gemini-flash-lite-latest"),  # free tier, lightest
 }
 ```
 

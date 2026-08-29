@@ -28,6 +28,9 @@ def create_celery_app() -> Celery:
         },
         worker_prefetch_multiplier=1,  # fair dispatch for long-running tasks
         task_acks_late=True,
+        # A crashed simulation must not be redelivered forever (poison message).
+        task_reject_on_worker_lost=False,
+        task_default_retry_delay=30,
     )
     return app
 

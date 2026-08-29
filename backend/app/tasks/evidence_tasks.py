@@ -6,6 +6,7 @@ from uuid import UUID
 import structlog
 
 from app.tasks.celery_app import celery_app
+from app.tasks.loop_utils import clear_loop_bound_caches
 
 logger = structlog.get_logger()
 
@@ -16,6 +17,7 @@ def ingest_evidence(self, evidence_id: str, case_id: str, file_path: str, mime_t
     Celery task: ingest + index a piece of evidence.
     Runs in the 'evidence' queue.
     """
+    clear_loop_bound_caches()
     asyncio.run(_ingest_evidence_async(evidence_id, case_id, file_path, mime_type))
 
 
@@ -28,6 +30,7 @@ async def _ingest_evidence_async(
     from app.ingestion.factory import get_ingester, detect_modality
     from app.rag.indexer import EvidenceIndexer
     from app.vector_db.factory import get_vector_store
+    from app.storage.factory import get_file_storage
     from app.db.session import get_session
     from app.db.factory import get_repository
 
@@ -35,9 +38,13 @@ async def _ingest_evidence_async(
     log.info("evidence_ingestion_started")
 
     try:
+        # `file_path` is a storage key (e.g. "cases/<id>/evidence/<id>/name.txt").
+        # Resolve it to a real local path the ingester can open.
+        local_path = await get_file_storage().localize(file_path)
+
         # Ingest file
         ingester = get_ingester(mime_type)
-        result = await ingester.ingest(file_path)
+        result = await ingester.ingest(local_path)
         modality = detect_modality(mime_type)
 
         # Index into vector store
@@ -65,7 +72,7 @@ async def _ingest_evidence_async(
                 "chunk_count": chunk_count,
                 "vector_collection": case_id,
                 "metadata": result.metadata,
-                "indexed_at": datetime.now(timezone.utc).isoformat(),
+                "indexed_at": datetime.now(timezone.utc),
             })
 
         log.info("evidence_ingestion_completed", chunk_count=chunk_count)

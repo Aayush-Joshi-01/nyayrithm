@@ -49,6 +49,9 @@ export const evidenceApi = {
   reindex: (caseId: string, evidenceId: string) =>
     client.post(`cases/${caseId}/evidence/${evidenceId}/reindex`).json(),
 
+  delete: (caseId: string, evidenceId: string) =>
+    client.delete(`cases/${caseId}/evidence/${evidenceId}`),
+
   search: (caseId: string, query: string, top_k = 5) =>
     client.post(`cases/${caseId}/search`, { json: { query, top_k } }).json<
       Array<{
@@ -69,12 +72,16 @@ export const simulationsApi = {
 
   get: (simId: string) => client.get(`simulations/${simId}`).json<Simulation>(),
 
-  create: (caseId: string, body: { title: string; mode?: string; max_turns?: number }) =>
-    client.post(`cases/${caseId}/simulations/`, { json: body }).json<Simulation>(),
+  create: (
+    caseId: string,
+    body: { title: string; mode?: string; max_turns?: number; config?: Record<string, unknown> },
+  ) => client.post(`cases/${caseId}/simulations/`, { json: body }).json<Simulation>(),
 
   start: (simId: string) => client.post(`simulations/${simId}/start`).json(),
   pause: (simId: string) => client.post(`simulations/${simId}/pause`).json(),
   stop: (simId: string) => client.post(`simulations/${simId}/stop`).json(),
+  remove: (simId: string) => client.delete(`simulations/${simId}`),
+  clone: (simId: string) => client.post(`simulations/${simId}/clone`).json<Simulation>(),
 
   getGraph: (simId: string) =>
     client.get(`simulations/${simId}/graph`).json<AgentGraph>(),
@@ -89,6 +96,9 @@ export const simulationsApi = {
     llm_model?: string;
     persona?: Record<string, unknown>;
   }) => client.post(`simulations/${simId}/agents`, { json: body }).json<Agent>(),
+
+  deleteAgent: (simId: string, agentId: string) =>
+    client.delete(`simulations/${simId}/agents/${agentId}`),
 
   listTurns: (simId: string, params?: { page?: number; size?: number }) =>
     client.get(`simulations/${simId}/turns`, { searchParams: params ?? {} })

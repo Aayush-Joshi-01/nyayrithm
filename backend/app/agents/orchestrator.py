@@ -30,6 +30,8 @@ class AgentOrchestrator:
         vector_store=None,
         turn_persist_fn: Callable | None = None,   # async fn(turn_result, agent_id, sim_id)
         broadcast_fn: Callable | None = None,       # async fn(event_type, payload)
+        agent_persist_fn: Callable | None = None,   # async fn(node, parent_id, spawn_request)
+        initial_turns: list[dict[str, Any]] | None = None,
     ) -> None:
         self.simulation = simulation
         self.graph = graph
@@ -37,8 +39,10 @@ class AgentOrchestrator:
         self.vector_store = vector_store
         self.turn_persist_fn = turn_persist_fn
         self.broadcast_fn = broadcast_fn
-        self._recent_turns: list[dict[str, Any]] = []
-        self._current_turn_index = 0
+        self.agent_persist_fn = agent_persist_fn
+        self._recent_turns: list[dict[str, Any]] = list(initial_turns or [])
+        # Resume turn-taking rotation where the prior run left off.
+        self._current_turn_index = len(self._recent_turns)
 
     def _next_agent_id(self) -> str | None:
         order = self.graph.get_turn_order()
@@ -71,6 +75,9 @@ class AgentOrchestrator:
             node = self.graph.spawn_agent(spawn_request=spawn_req, parent_id=agent_id)
             new_ids.append(node.agent_id)
 
+            if self.agent_persist_fn:
+                await self.agent_persist_fn(node, agent_id, spawn_req)
+
             if self.broadcast_fn:
                 await self.broadcast_fn("agent.spawned", {
                     "agent_id": node.agent_id,
@@ -91,17 +98,31 @@ class AgentOrchestrator:
             recent_text = " ".join(t.get("content", "") for t in self._recent_turns[-3:]).lower()
             if any(k in recent_text for k in ("forensic", "ballistic", "dna", "toxicology", "digital evidence")):
                 from app.agents.base import SpawnRequest
-                self.graph.spawn_agent(
-                    spawn_request=SpawnRequest(
-                        role="expert_witness",
-                        name="Court-Appointed Forensic Expert",
-                        persona={"specialty": "forensics", "neutral": True},
-                        reason="Orchestrator auto-spawned: forensic topic detected without expert present",
-                        initial_instruction="You are a neutral court-appointed forensic expert. Provide unbiased technical analysis.",
-                    ),
-                    parent_id=self.graph.root_agents[0] if self.graph.root_agents else list(self.graph.nodes.keys())[0],
-                    auto=True,
+                spawn_req = SpawnRequest(
+                    role="expert_witness",
+                    name="Court-Appointed Forensic Expert",
+                    persona={"specialty": "forensics", "neutral": True},
+                    reason="Orchestrator auto-spawned: forensic topic detected without expert present",
+                    initial_instruction="You are a neutral court-appointed forensic expert. Provide unbiased technical analysis.",
                 )
+                parent_id = (
+                    self.graph.root_agents[0]
+                    if self.graph.root_agents
+                    else list(self.graph.nodes.keys())[0]
+                )
+                node = self.graph.spawn_agent(
+                    spawn_request=spawn_req, parent_id=parent_id, auto=True
+                )
+                if self.agent_persist_fn:
+                    await self.agent_persist_fn(node, parent_id, spawn_req)
+                if self.broadcast_fn:
+                    await self.broadcast_fn("agent.spawned", {
+                        "agent_id": node.agent_id,
+                        "role": node.role,
+                        "name": node.name,
+                        "parent_id": parent_id,
+                        "reason": spawn_req.reason,
+                    })
                 logger.info("orchestrator_auto_spawned_expert")
 
     async def _check_contradiction(self, result: TurnResult, agent_id: str) -> None:
@@ -155,11 +176,20 @@ class AgentOrchestrator:
             if self.broadcast_fn:
                 await self.broadcast_fn("turn.token", {"agent_id": agent_id, "token": token})
 
-        result = await node.agent.run_turn(
-            context=context,
-            vector_store=self.vector_store,
-            stream_callback=stream_cb,
-        )
+        try:
+            result = await node.agent.run_turn(
+                context=context,
+                vector_store=self.vector_store,
+                stream_callback=stream_cb,
+            )
+        except Exception as exc:
+            logger.error("turn_failed", agent_id=agent_id, error=str(exc))
+            if self.broadcast_fn:
+                await self.broadcast_fn("error", {
+                    "message": f"{node.name} ({node.role}) failed to respond: {exc}",
+                    "turn_number": self.simulation.current_turn,
+                })
+            raise
 
         # Persist turn
         if self.turn_persist_fn:

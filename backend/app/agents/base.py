@@ -129,6 +129,7 @@ class BaseAgent(ABC):
             query=query,
             relevant_turns=relevant_turns,
             case_context=case_context,
+            extra={"case_metadata": context.case_metadata},
         )
 
     async def retrieve(
@@ -162,9 +163,9 @@ class BaseAgent(ABC):
         retrieved: list[SearchResult],
         stream_callback=None,  # optional async callable(token: str)
     ) -> AgentResponse:
-        system_prompt = self.build_system_prompt(
-            {"title": perceived.case_context, **perceived.extra}
-        )
+        case_meta = dict(perceived.extra.get("case_metadata") or {})
+        case_meta.setdefault("title", "Untitled Case")
+        system_prompt = self.build_system_prompt(case_meta)
 
         history = self.memory.as_messages()
         rag_context = self._build_rag_context(retrieved)

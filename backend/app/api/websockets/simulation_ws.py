@@ -2,65 +2,48 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
 
 import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from app.api.websockets.event_bus import make_broadcast_fn, subscribe
 
 logger = structlog.get_logger()
 
 websocket_router = APIRouter()
 
-# In-memory connection registry: sim_id -> list of WebSocket connections
-_connections: dict[str, list[WebSocket]] = {}
+# Re-exported so existing imports (`from ...simulation_ws import make_broadcast_fn`)
+# keep working — the implementation now lives in event_bus and goes over Redis so
+# it bridges the uvicorn <-> Celery-worker process boundary.
+__all__ = ["websocket_router", "make_broadcast_fn"]
 
 
-async def broadcast(simulation_id: str, event_type: str, payload: dict[str, Any]) -> None:
-    """Broadcast a structured event to all subscribers of a simulation."""
-    conns = _connections.get(simulation_id, [])
-    if not conns:
-        return
-    message = json.dumps({"event": event_type, "data": payload})
-    dead = []
-    for ws in conns:
-        try:
-            await ws.send_text(message)
-        except Exception:
-            dead.append(ws)
-    for ws in dead:
-        conns.remove(ws)
-
-
-def make_broadcast_fn(simulation_id: str):
-    async def _broadcast(event_type: str, payload: dict) -> None:
-        await broadcast(simulation_id, event_type, payload)
-    return _broadcast
+async def _pump_events(websocket: WebSocket, simulation_id: str) -> None:
+    """Forward every Redis event for this simulation to one browser socket."""
+    async for frame in subscribe(simulation_id):
+        await websocket.send_text(json.dumps(frame))
 
 
 @websocket_router.websocket("/ws/simulations/{simulation_id}")
 async def simulation_websocket(websocket: WebSocket, simulation_id: str):
     await websocket.accept()
-    _connections.setdefault(simulation_id, []).append(websocket)
     logger.info("ws_connected", simulation_id=simulation_id)
 
+    pump = asyncio.create_task(_pump_events(websocket, simulation_id))
+
     try:
-        # Send initial connection confirmation
         await websocket.send_text(json.dumps({
             "event": "connected",
             "data": {"simulation_id": simulation_id},
         }))
 
-        # Keep alive — client may send control messages
         while True:
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 msg = json.loads(data)
-
                 if msg.get("type") == "ping":
                     await websocket.send_text(json.dumps({"event": "pong"}))
-
             except asyncio.TimeoutError:
-                # Send keepalive ping
                 await websocket.send_text(json.dumps({"event": "ping"}))
 
     except WebSocketDisconnect:
@@ -68,6 +51,8 @@ async def simulation_websocket(websocket: WebSocket, simulation_id: str):
     except Exception as exc:
         logger.error("ws_error", error=str(exc))
     finally:
-        conns = _connections.get(simulation_id, [])
-        if websocket in conns:
-            conns.remove(websocket)
+        pump.cancel()
+        try:
+            await pump
+        except (asyncio.CancelledError, Exception):
+            pass

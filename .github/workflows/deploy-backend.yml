@@ -1,45 +1,45 @@
-name: Deploy Backend
+# name: Deploy Backend
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - "backend/**"
-      - "infra/terraform/**"
-      - ".github/workflows/deploy-backend.yml"
+# on:
+#   push:
+#     branches: [main]
+#     paths:
+#       - "backend/**"
+#       - "infra/terraform/**"
+#       - ".github/workflows/deploy-backend.yml"
 
-jobs:
-  deploy:
-    name: Build, Push & Deploy Backend
-    runs-on: ubuntu-latest
-    environment: production
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
+# jobs:
+#   deploy:
+#     name: Build, Push & Deploy Backend
+#     runs-on: ubuntu-latest
+#     environment: production
+#     permissions:
+#       id-token: write
+#       contents: read
+#     steps:
+#       - uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+#           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
+#       - name: Login to ECR
+#         id: ecr
+#         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push Backend Image
-        run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/nyayrithm-backend:${{ github.sha }}
-          docker build ./backend -t $IMAGE
-          docker push $IMAGE
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+#       - name: Build & Push Backend Image
+#         run: |
+#           IMAGE=${{ steps.ecr.outputs.registry }}/nyayrithm-backend:${{ github.sha }}
+#           docker build ./backend -t $IMAGE
+#           docker push $IMAGE
+#           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      - name: Terraform Apply
-        working-directory: infra/terraform/environments/prod
-        env:
-          TF_VAR_backend_image: ${{ env.IMAGE }}
-        run: |
-          terraform init
-          terraform apply -auto-approve
+#       - name: Terraform Apply
+#         working-directory: infra/terraform/environments/prod
+#         env:
+#           TF_VAR_backend_image: ${{ env.IMAGE }}
+#         run: |
+#           terraform init
+#           terraform apply -auto-approve

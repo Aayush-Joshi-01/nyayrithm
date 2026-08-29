@@ -4,16 +4,14 @@ from typing import Any
 
 
 # role -> (default_provider, default_model)
+# Alias that always resolves to Google's newest flash-lite model.
+_DEFAULT_MODEL = "gemini-flash-lite-latest"
 ROLE_PROVIDER_MAP: dict[str, tuple[str, str]] = {
-    "judge":          ("anthropic", "claude-sonnet-4-6"),
-    "prosecutor":     ("openai",    "gpt-4o"),
-    "defense":        ("openai",    "gpt-4o"),
-    "plaintiff":      ("anthropic", "claude-haiku-4-5-20251001"),
-    "accused":        ("anthropic", "claude-haiku-4-5-20251001"),
-    "witness":        ("openai",    "gpt-4o-mini"),
-    "investigator":   ("openai",    "gpt-4o"),
-    "expert_witness": ("anthropic", "claude-sonnet-4-6"),
-    "custom":         ("openai",    "gpt-4o"),
+    role: ("gemini", _DEFAULT_MODEL)
+    for role in (
+        "judge", "prosecutor", "defense", "plaintiff", "accused",
+        "witness", "investigator", "expert_witness", "custom",
+    )
 }
 
 PROVIDER_REGISTRY: dict[str, type] = {}
@@ -29,8 +27,10 @@ def _lazy_register() -> None:
         return
     from app.llm.openai import OpenAIProvider
     from app.llm.anthropic import AnthropicProvider
+    from app.llm.gemini import GeminiProvider
     register_provider("openai", OpenAIProvider)
     register_provider("anthropic", AnthropicProvider)
+    register_provider("gemini", GeminiProvider)
 
 
 def list_providers() -> list[str]:

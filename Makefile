@@ -2,7 +2,7 @@
 
 # ── Development ───────────────────────────────────────────────────────────────
 
-dev:
+dev: env
 	@echo "Starting Nyayrithm dev stack..."
 	docker compose up --build -d
 	@echo "Backend:  http://localhost:8000/docs"
@@ -80,7 +80,7 @@ clean:
 env:
 	@cp -n .env.example .env && echo ".env created from .env.example" || echo ".env already exists"
 	@if [ ! -f frontend/.env.local ]; then \
-		printf '# Local dev — used by bun dev (outside Docker).\n# See docker-compose.yml for Docker equivalents.\nKEYCLOAK_URL=http://localhost:8080\nNEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080\nNEXT_PUBLIC_KEYCLOAK_REALM=nyayrithm\nNEXT_PUBLIC_KEYCLOAK_CLIENT_ID=nyayrithm-app\nKEYCLOAK_ADMIN_USER=admin\nKEYCLOAK_ADMIN_PASS=admin\nNEXT_PUBLIC_API_URL=http://localhost:8000\nNEXT_PUBLIC_WS_URL=ws://localhost:8000\n' > frontend/.env.local; \
+		printf '# Local dev — used by bun dev (outside Docker).\n# See docker-compose.yml for Docker equivalents.\nKEYCLOAK_URL=http://localhost:8080\nNEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080\nNEXT_PUBLIC_KEYCLOAK_REALM=nyayrithm\nNEXT_PUBLIC_KEYCLOAK_CLIENT_ID=nyayrithm-app\nKEYCLOAK_ADMIN_USER=admin\nKEYCLOAK_ADMIN_PASS=admin\nNEXT_PUBLIC_API_URL=http://localhost:8000\nNEXT_PUBLIC_WS_URL=ws://localhost:8000\nNEXT_PUBLIC_DEV_MODE=true\n' > frontend/.env.local; \
 		echo "frontend/.env.local created"; \
 	else \
 		echo "frontend/.env.local already exists"; \

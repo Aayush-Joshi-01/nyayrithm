@@ -63,9 +63,13 @@ class QdrantVectorStore:
             ]
             qdrant_filter = qmodels.Filter(must=conditions)
 
-        results = await self.client.search(
+        if not await self.collection_exists(collection):
+            # No evidence has been ingested for this case yet — nothing to retrieve.
+            return []
+
+        response = await self.client.query_points(
             collection_name=collection,
-            query_vector=query_embedding,
+            query=query_embedding,
             limit=top_k,
             query_filter=qdrant_filter,
             with_payload=True,
@@ -82,7 +86,7 @@ class QdrantVectorStore:
                 ),
                 score=r.score,
             )
-            for r in results
+            for r in response.points
         ]
 
     async def delete(self, collection: str, ids: list[str]) -> None:

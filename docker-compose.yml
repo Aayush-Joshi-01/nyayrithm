@@ -11,6 +11,20 @@
 
 services:
 
+  # ── DB migrations (one-shot, runs before backend/worker) ──
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://nyayrithm:secret@db:5432/nyayrithm
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   # ── Backend API ───────────────────────────────────────────
   backend:
     build:
@@ -31,6 +45,8 @@ services:
       REDIS_URL: redis://redis:6379/2
       QDRANT_URL: http://qdrant:6333
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       redis:
@@ -60,26 +76,12 @@ services:
       REDIS_URL: redis://redis:6379/2
       QDRANT_URL: http://qdrant:6333
     depends_on:
-      - backend
-      - redis
-    restart: unless-stopped
-
-  # ── Celery Beat (scheduled tasks) ─────────────────────────
-  celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A app.tasks.celery_app beat --loglevel=info
-    volumes:
-      - ./backend:/app
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://nyayrithm:secret@db:5432/nyayrithm
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/1
-      REDIS_URL: redis://redis:6379/2
-    depends_on:
-      - redis
+      migrate:
+        condition: service_completed_successfully
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   # ── Keycloak (Identity & Access Management) ──────────────
@@ -119,6 +121,7 @@ services:
       NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
       NEXT_PUBLIC_KEYCLOAK_REALM: nyayrithm
       NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: nyayrithm-app
+      NEXT_PUBLIC_DEV_MODE: "true"
       # Server-side URL (API routes run inside this container — must use Docker service name)
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_ADMIN_USER: admin

@@ -359,3 +359,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Claude Code — local only
+CLAUDE.md
+.claude/

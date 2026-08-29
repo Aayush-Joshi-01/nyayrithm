@@ -1,10 +1,11 @@
 "use client"
 
 import { use } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import Link from "next/link"
 import {
-  FileText, Play, Globe, Scale, Layers, Clock, ChevronRight,
+  FileText, Play, Globe, Scale, Layers, Clock, ChevronRight, Copy, Trash2,
 } from "lucide-react"
 import { casesApi, simulationsApi } from "@/lib/api"
 import { SimulationPrompt } from "@/components/simulation/SimulationPrompt"
@@ -32,6 +33,8 @@ const MODE_LABELS: Record<string, string> = {
 
 export default function CaseOverviewPage({ params }: { params: Promise<{ caseId: string }> }) {
   const { caseId } = use(params)
+  const qc = useQueryClient()
+  const router = useRouter()
 
   const { data: case_, isLoading: caseLoading } = useQuery({
     queryKey: ["case", caseId],
@@ -41,6 +44,22 @@ export default function CaseOverviewPage({ params }: { params: Promise<{ caseId:
   const { data: sims, isLoading: simsLoading } = useQuery({
     queryKey: ["simulations", caseId],
     queryFn: () => simulationsApi.list(caseId),
+    refetchInterval: 5000,
+  })
+
+  const refreshSims = () => qc.invalidateQueries({ queryKey: ["simulations", caseId] })
+
+  const deleteMutation = useMutation({
+    mutationFn: (simId: string) => simulationsApi.remove(simId),
+    onSuccess: refreshSims,
+  })
+
+  const cloneMutation = useMutation({
+    mutationFn: (simId: string) => simulationsApi.clone(simId),
+    onSuccess: (sim) => {
+      refreshSims()
+      router.push(`/dashboard/${caseId}/simulation/${sim.id}`)
+    },
   })
 
   return (
@@ -141,9 +160,32 @@ export default function CaseOverviewPage({ params }: { params: Promise<{ caseId:
                         <Badge variant={cfg.variant} className={cn("text-xs", sim.status === "running" && "animate-pulse-slow")}>
                           {cfg.label}
                         </Badge>
-                        <span className="text-xs text-white/20">
+                        <span className="text-xs text-white/20 hidden sm:inline">
                           {formatDistanceToNow(new Date(sim.created_at), { addSuffix: true })}
                         </span>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            cloneMutation.mutate(sim.id)
+                          }}
+                          disabled={cloneMutation.isPending}
+                          title="Clone simulation (fresh roster, latest models)"
+                          className="text-white/25 hover:text-amber-400 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            if (confirm(`Delete "${sim.title}"? This removes its turns and agents.`))
+                              deleteMutation.mutate(sim.id)
+                          }}
+                          disabled={deleteMutation.isPending}
+                          title="Delete simulation"
+                          className="text-white/25 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                         <ChevronRight className="w-3.5 h-3.5 text-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
                     </CardContent>

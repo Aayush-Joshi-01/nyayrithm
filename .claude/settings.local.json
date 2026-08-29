@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(read d *)",
-      "Bash(git add *)"
-    ]
-  }
-}
