@@ -90,10 +90,31 @@ async def get_evidence(case_id: UUID, evidence_id: UUID, repo=Depends(_ev_repo))
 
 @router.delete("/cases/{case_id}/evidence/{evidence_id}", status_code=204)
 async def delete_evidence(case_id: UUID, evidence_id: UUID, repo=Depends(_ev_repo)):
+    import structlog
+
     ev = await repo.get(str(evidence_id))
     if not ev or str(ev.case_id) != str(case_id):
         raise HTTPException(status_code=404, detail="Evidence not found")
+
+    log = structlog.get_logger()
+
+    # Best-effort de-index from the vector store.
+    try:
+        from app.rag.indexer import EvidenceIndexer
+        from app.vector_db.factory import get_vector_store
+        indexer = EvidenceIndexer(get_vector_store())
+        await indexer.delete_evidence(case_id, evidence_id, ev.chunk_count or 0)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("evidence_deindex_failed", evidence_id=str(evidence_id), error=str(exc))
+
+    # Best-effort delete of the stored file.
+    try:
+        await get_file_storage().delete(ev.file_path)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("evidence_file_delete_failed", evidence_id=str(evidence_id), error=str(exc))
+
     await repo.delete(str(evidence_id))
+    return None
 
 
 @router.post("/cases/{case_id}/evidence/{evidence_id}/reindex", status_code=202)

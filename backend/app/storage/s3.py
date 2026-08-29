@@ -34,6 +34,17 @@ class S3FileStorage:
             response = await s3.get_object(Bucket=self.bucket, Key=key)
             return await response["Body"].read()
 
+    async def localize(self, key: str) -> str:
+        import os
+        import tempfile
+
+        data = await self.download(key)
+        suffix = os.path.splitext(key)[1]
+        fd, path = tempfile.mkstemp(suffix=suffix)
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        return path
+
     async def delete(self, key: str) -> None:
         async with self._client() as s3:
             await s3.delete_object(Bucket=self.bucket, Key=key)
