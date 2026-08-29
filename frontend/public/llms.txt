@@ -1,0 +1,27 @@
+# Nyayrithm
+
+> Nyayrithm runs a graph of AI agents that argue a legal case from the evidence you give it. Each agent plays a distinct legal role (judge, prosecutor, defense, plaintiff, accused, witness, investigator, expert witness, or custom) with its own knowledge scope and model. Every claim an agent makes is tied to the exact source passage it came from, and each turn is marked cited, inferred, or disputed. The platform is self-hostable and provider-agnostic: it runs fully offline on a laptop or on cloud infrastructure, with the LLM, database, vector store, file storage, and embedder each swappable via one environment variable.
+
+## What it is for
+
+- Litigators stress-testing a theory of the case and rehearsing cross-examination before trial or deposition.
+- Legal researchers and legal-tech builders studying multi-agent argumentation and evidence-grounded reasoning.
+- Three modes: courtroom, deposition, and strategy session.
+
+## How a proceeding runs
+
+1. Enter the evidence. Attach pleadings, depositions, call recordings, video, and images to a case. Each file is transcribed, chunked, and indexed on ingest.
+2. Seat the bench. Choose the roster and assign a model per role, or let one free provider carry the whole court. Set what each agent is permitted to retrieve.
+3. Call it to order. The proceeding streams live over a line-numbered record. Agents argue, object, and cross-examine; the orchestrator spawns a specialist agent mid-proceeding when a domain question opens. Any turn can be overridden by a human.
+
+## Key facts
+
+- Retrieval is role-scoped: a witness only retrieves its linked exhibits; the judge retrieves the whole record.
+- Citations use inline markers resolvable to a document passage, audio timestamp, or video frame.
+- Providers: OpenAI, Anthropic, Google Gemini, Ollama (local). Databases: PostgreSQL, MongoDB, SQLite, DynamoDB. Vector stores: Qdrant, Chroma, Pinecone, pgvector. Storage: local, S3, MinIO, GCS, Azure Blob.
+- Open source. No account is required to run it locally. Pre-launch: there are no customers, testimonials, or benchmarks yet.
+
+## Links
+
+- Home: https://nyayrithm.aayushjoshi.dev/
+- Documentation: https://nyayrithm.aayushjoshi.dev/docs
