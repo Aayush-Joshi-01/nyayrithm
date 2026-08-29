@@ -1,51 +1,61 @@
 "use client";
 
 import { useSimulationStore } from "@/store/simulationStore";
-import { ROLE_COLORS, ROLE_HEX, formatRole, cn } from "@/lib/utils";
+import { roleStyle, roleVar, ROLE_SIGIL, formatRole, cn } from "@/lib/utils";
 import type { AgentRole } from "@/types/api";
 
 export function AgentPanel({ simId: _simId }: { simId: string }) {
   const { agents, streaming } = useSimulationStore();
 
   return (
-    <div className="w-56 flex-shrink-0 border-r border-border overflow-y-auto p-3 space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1 mb-3">
-        Agents ({agents.length})
+    <div className="w-60 flex-shrink-0 overflow-y-auto border-r border-hairline p-3">
+      <p className="mb-3 px-1 font-mono text-[0.62rem] uppercase tracking-[0.2em] text-foreground/30">
+        The bench, {agents.length}
       </p>
-      {agents.map((agent) => {
-        const isActive = streaming?.agentId === agent.id;
-        return (
-          <div
-            key={agent.id}
-            className={cn(
-              "p-2.5 rounded-lg border transition-all",
-              isActive
-                ? "border-amber-500/40 bg-amber-500/5"
-                : "border-transparent hover:border-border hover:bg-accent/20"
-            )}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <div
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: ROLE_HEX[agent.role as AgentRole] ?? "#94a3b8" }}
-              />
-              <span className="text-xs font-medium truncate">{agent.name}</span>
-              {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse ml-auto" />}
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={cn("text-xs px-1.5 py-0.5 rounded border", ROLE_COLORS[agent.role as AgentRole] ?? "text-slate-400 bg-slate-400/10 border-slate-400/30")}>
-                {formatRole(agent.role as AgentRole)}
-              </span>
-              {!agent.is_predefined && (
-                <span className="text-xs text-violet-400 bg-violet-400/10 px-1 py-0.5 rounded">spawned</span>
+      <div className="space-y-0.5">
+        {agents.map((agent) => {
+          const role = agent.role as AgentRole;
+          const active = streaming?.agentId === agent.id;
+          const dormant = agent.status === "suspended" || agent.status === "dismissed";
+          return (
+            <div
+              key={agent.id}
+              className={cn(
+                "rounded-sm px-2.5 py-2 transition-colors",
+                active && "bg-ember/[0.06] shadow-[inset_2px_0_0_0_#FF7A3D]",
+                dormant && "ghost"
               )}
+            >
+              <div className="mb-1 flex items-center gap-2">
+                <span
+                  className="grid h-4 w-4 flex-shrink-0 place-items-center rounded-sm border font-mono text-[0.56rem] font-semibold"
+                  style={roleStyle(role)}
+                >
+                  {ROLE_SIGIL[role]}
+                </span>
+                <span className="truncate text-[0.8rem] font-medium text-foreground/85">{agent.name}</span>
+                {active && <span className="ml-auto h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ember" />}
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                <span
+                  className="rounded-sm border px-1 py-px font-mono text-[0.56rem] uppercase tracking-wide"
+                  style={{ color: roleVar(role), borderColor: `color-mix(in srgb, ${roleVar(role)} 30%, transparent)` }}
+                >
+                  {formatRole(role)}
+                </span>
+                {!agent.is_predefined && (
+                  <span className="rounded-sm border border-hairline px-1 py-px font-mono text-[0.56rem] uppercase tracking-wide text-foreground/40">
+                    spawned
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 truncate font-mono text-[0.64rem] text-foreground/30">
+                {agent.llm_provider}/{agent.llm_model.split("-").slice(0, 2).join("-")}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 truncate">
-              {agent.llm_provider}/{agent.llm_model.split("-").slice(0, 2).join("-")}
-            </p>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

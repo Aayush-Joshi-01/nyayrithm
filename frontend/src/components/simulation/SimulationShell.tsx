@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Play, Pause, Square } from "lucide-react"
+import { Play, Pause, Square, X } from "lucide-react"
 import { simulationsApi } from "@/lib/api"
 import { useSimulationStore } from "@/store/simulationStore"
 import { SimulationWebSocket } from "@/lib/ws"
@@ -10,17 +10,16 @@ import { TurnFeed } from "./TurnFeed"
 import { AgentPanel } from "./AgentPanel"
 import { AgentGraph } from "./AgentGraph"
 import { AgentSetup } from "./AgentSetup"
-import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
-const STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "muted" | "info" | "outline" }> = {
+const STATUS_BADGE: Record<string, { label: string; variant: "success" | "warning" | "muted" | "info" | "outline" | "live" }> = {
   draft: { label: "Draft", variant: "info" },
-  running: { label: "Running", variant: "success" },
-  paused: { label: "Paused", variant: "warning" },
-  completed: { label: "Completed", variant: "muted" },
-  failed: { label: "Failed", variant: "outline" },
+  running: { label: "In session", variant: "live" },
+  paused: { label: "Recessed", variant: "warning" },
+  completed: { label: "Adjourned", variant: "muted" },
+  failed: { label: "Mistrial", variant: "outline" },
 }
 
 export function SimulationShell({ simId }: { caseId: string; simId: string }) {
@@ -85,64 +84,48 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
   const statusCfg = STATUS_BADGE[status] ?? STATUS_BADGE.draft
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/8 bg-card/50 backdrop-blur-sm flex-shrink-0 gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <h2 className="font-semibold text-sm text-white/90 truncate">
-            {sim?.title ?? "Simulation"}
+      <div className="podium-edge flex flex-shrink-0 items-center justify-between gap-3 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <h2 className="truncate font-serif text-[0.95rem] font-medium text-foreground">
+            {sim?.title ?? "Proceeding"}
           </h2>
-          <Badge variant={statusCfg.variant} className={cn("text-xs flex-shrink-0", status === "running" && "animate-pulse-slow")}>
+          <Badge variant={statusCfg.variant} className="flex-shrink-0">
             {statusCfg.label}
           </Badge>
-          <span className="text-xs text-white/30 flex-shrink-0 hidden sm:block">
-            Turn {currentTurn} / {sim?.max_turns ?? "—"}
+          <span className="hidden flex-shrink-0 font-mono text-[0.72rem] text-foreground/35 tabular sm:block">
+            turn {currentTurn} / {sim?.max_turns ?? "?"}
           </span>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-2">
           {(status === "paused" || status === "failed") && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => startMutation.mutate()}
-              disabled={startMutation.isPending}
-              className="text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 h-8"
-            >
-              <Play className="w-3.5 h-3.5 mr-1" />
+            <Button size="sm" variant="outline" onClick={() => startMutation.mutate()} disabled={startMutation.isPending}>
+              <Play className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
               Resume
             </Button>
           )}
           {status === "running" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => pauseMutation.mutate()}
-              className="text-amber-400 border border-amber-500/30 hover:bg-amber-500/10 h-8"
-            >
-              <Pause className="w-3.5 h-3.5 mr-1" />
-              Pause
+            <Button size="sm" variant="outline" onClick={() => pauseMutation.mutate()}>
+              <Pause className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+              Recess
             </Button>
           )}
           {(status === "running" || status === "paused") && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => stopMutation.mutate()}
-              className="text-red-400 border border-red-500/30 hover:bg-red-500/10 h-8"
-            >
-              <Square className="w-3.5 h-3.5 mr-1" />
-              Stop
+            <Button size="sm" variant="destructive" onClick={() => stopMutation.mutate()}>
+              <Square className="mr-1 h-3.5 w-3.5" strokeWidth={2} />
+              Adjourn
             </Button>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-red-500/10 border-b border-red-500/30 text-xs text-red-300 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-oxblood-bright/30 bg-oxblood-bright/10 px-4 py-2 text-xs text-oxblood-bright">
           <span className="truncate">{error}</span>
-          <button onClick={clearError} className="text-red-300/60 hover:text-red-300 flex-shrink-0">
-            <Square className="w-3 h-3" />
+          <button onClick={clearError} className="flex-shrink-0 opacity-70 hover:opacity-100">
+            <X className="h-3 w-3" strokeWidth={2} />
           </button>
         </div>
       )}
@@ -153,26 +136,22 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
         </div>
       ) : (
       /* Main */
-      <Tabs defaultValue="courtroom" className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 border-b border-white/8 px-4 py-1.5 bg-card/30">
-          <TabsList className="h-8 bg-white/5 gap-1">
-            <TabsTrigger value="courtroom" className="text-xs h-6 px-3 data-[state=active]:bg-white/10">
-              Courtroom
-            </TabsTrigger>
-            <TabsTrigger value="graph" className="text-xs h-6 px-3 data-[state=active]:bg-white/10">
-              Agent Graph
-            </TabsTrigger>
+      <Tabs defaultValue="courtroom" className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex-shrink-0 border-b border-hairline px-4 py-1.5">
+          <TabsList>
+            <TabsTrigger value="courtroom">The record</TabsTrigger>
+            <TabsTrigger value="graph">The spawn graph</TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="courtroom" className="flex-1 flex overflow-hidden m-0 mt-0">
+        <TabsContent value="courtroom" className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
           <AgentPanel simId={simId} />
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden">
             <TurnFeed simId={simId} />
           </div>
         </TabsContent>
 
-        <TabsContent value="graph" className="flex-1 overflow-hidden m-0 mt-0">
+        <TabsContent value="graph" className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
           <AgentGraph />
         </TabsContent>
       </Tabs>
