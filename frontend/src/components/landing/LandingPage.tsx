@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { ChevronDown } from "lucide-react"
 import { LiveRecord } from "@/components/landing/LiveRecord"
 import { FAQ_ITEMS } from "@/components/landing/faq-data"
@@ -175,37 +174,22 @@ export function LandingPage() {
       <section className="relative flex min-h-[100dvh] items-center px-5 pt-24 pb-16">
         <div className="pointer-events-none absolute inset-0 bench-light" />
         <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 lg:grid-cols-[1fr_minmax(0,540px)]">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-              className="font-serif text-[clamp(2.7rem,6vw,4.9rem)] font-medium leading-[0.98] tracking-tight text-bone"
-            >
+          <div className="rise">
+            <h1 className="font-serif text-[clamp(2.7rem,6vw,4.9rem)] font-medium leading-[0.98] tracking-tight text-bone">
               The court,
               <br />
               <ThemeWord />.
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.2 }}
-              className="mt-6 max-w-lg text-[1.02rem] leading-relaxed text-foreground/60"
-            >
+            <p className="mt-6 max-w-lg text-[1.02rem] leading-relaxed text-foreground/60">
               A graph of AI agents argues your case from your evidence. Each
               plays a scoped legal role; every claim is seamed to its source.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.35 }}
-              className="mt-9 flex flex-wrap items-center gap-4"
-            >
+            <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link
                 href="/signup"
-                className="rounded-sm bg-ember px-6 py-3 text-[0.9rem] font-semibold text-[#12100A] transition-[filter,transform] hover:brightness-105 active:translate-y-px"
+                className="rounded-sm bg-ember px-6 py-3 text-[0.9rem] font-semibold text-[#12100A] transition-[filter,transform] duration-150 hover:brightness-105 active:translate-y-px active:scale-[0.985]"
               >
                 Convene a proceeding
               </Link>
@@ -215,17 +199,12 @@ export function LandingPage() {
               >
                 Read the docs
               </Link>
-            </motion.div>
+            </div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="justify-self-center lg:justify-self-end"
-          >
+          <div className="rise justify-self-center [animation-delay:120ms] lg:justify-self-end">
             <LiveRecord />
-          </motion.div>
+          </div>
         </div>
       </section>
 
