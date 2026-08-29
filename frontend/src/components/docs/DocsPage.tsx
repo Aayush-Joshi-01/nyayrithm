@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronRight, TriangleAlert, Check } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
+import { cn } from "@/lib/utils"
 
 interface NavItem {
   id: string
@@ -35,9 +36,17 @@ function Code({ children, lang = "bash" }: { children: string; lang?: string }) 
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
           }}
-          className="font-mono text-[0.68rem] uppercase tracking-wide text-foreground/30 transition-colors hover:text-brass-text"
+          className={cn(
+            "inline-flex items-center gap-1 font-mono text-[0.68rem] uppercase tracking-wide transition-colors",
+            copied ? "text-role-witness" : "text-foreground/30 hover:text-brass-text"
+          )}
         >
-          {copied ? "Copied" : "Copy"}
+          <span className="grid grid-cols-1 grid-rows-1 [&>*]:col-start-1 [&>*]:row-start-1">
+            <span className={cn("transition-all duration-200", copied ? "translate-y-0.5 opacity-0" : "opacity-100")}>Copy</span>
+            <span className={cn("flex items-center gap-1 transition-all duration-200", copied ? "opacity-100" : "-translate-y-0.5 opacity-0")}>
+              <Check className="h-3 w-3" strokeWidth={2.5} /> Copied
+            </span>
+          </span>
         </button>
       </div>
       <pre className="overflow-x-auto bg-ink-raised/50 p-5">

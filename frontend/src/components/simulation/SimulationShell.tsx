@@ -144,14 +144,20 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
           </TabsList>
         </div>
 
-        <TabsContent value="courtroom" className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
+        <TabsContent
+          value="courtroom"
+          className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-left-2 data-[state=active]:duration-200 data-[state=active]:ease-[cubic-bezier(0.16,1,0.3,1)]"
+        >
           <AgentPanel simId={simId} />
           <div className="flex flex-1 flex-col overflow-hidden">
             <TurnFeed simId={simId} />
           </div>
         </TabsContent>
 
-        <TabsContent value="graph" className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden">
+        <TabsContent
+          value="graph"
+          className="m-0 mt-0 flex min-h-0 flex-1 overflow-hidden data-[state=inactive]:hidden data-[state=active]:animate-in data-[state=active]:fade-in-0 data-[state=active]:slide-in-from-right-2 data-[state=active]:duration-200 data-[state=active]:ease-[cubic-bezier(0.16,1,0.3,1)]"
+        >
           <AgentGraph />
         </TabsContent>
       </Tabs>

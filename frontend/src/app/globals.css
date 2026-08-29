@@ -265,6 +265,9 @@
     width: 1px;
     background: rgb(var(--brass-text));
     opacity: 0.55;
+    /* a status change (inferred -> cited on acceptance, -> disputed on an
+       override) morphs the margin rule instead of snapping */
+    transition: background 0.4s ease, opacity 0.4s ease;
   }
   .custody-line[data-prov="inferred"]::before {
     background: repeating-linear-gradient(to bottom, rgb(var(--prov-inferred)) 0 3px, transparent 3px 7px);
@@ -327,17 +330,76 @@
   }
   @keyframes docket-blink { 50% { opacity: 0.25; } }
 
+  /* --- "on the record": a turn is entered, one line at a time --- */
+  /* the numeral settles onto the record: the overshoot lives in the values,
+     the easing stays exponential (no bounce curve) */
+  @keyframes rec-stamp {
+    0% { opacity: 0; transform: translateY(1px) scale(1.3); }
+    50% { opacity: 1; }
+    72% { transform: translateY(0) scale(0.95); }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes rec-rule {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+  @keyframes rec-set-on {
+    from { opacity: 0; clip-path: inset(0 100% 0 0); }
+    to { opacity: 1; clip-path: inset(0 0 0 0); }
+  }
+  @keyframes shimmer-sweep {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* a grid settling in on first load; delay is capped by the caller */
+  .stagger-item {
+    animation: card-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--stagger, 0) * 45ms);
+  }
+
   .rise { animation: rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
   .arrive { animation: arrive-tint 1s ease-out both; }
 
-  /* scroll-driven section reveal: enhancement only, content visible by default */
+  /* the focal sequence, applied to a freshly-entered record line */
+  .rec-enter .lineno { animation: rec-stamp 0.34s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .rec-enter .custody-line::before {
+    transform-origin: top;
+    animation: rec-rule 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+  }
+  .rec-enter .rec-body { animation: rec-set-on 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both; }
+
+  .skeleton-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgb(var(--brass) / 0.10) 45%,
+      rgb(var(--brass) / 0.16) 50%,
+      rgb(var(--brass) / 0.10) 55%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-sweep 1.5s linear infinite;
+  }
+
+  /* scroll-driven reveal: the page resolving as you move down the record, not a
+     choreographed entrance on every section. Opacity + a hair of lift, quick
+     range, CSS-only so it can never strand content. */
+  @keyframes reveal-settle {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
   .reveal { opacity: 1; }
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
       .reveal {
-        animation: rise-in linear both;
+        animation: reveal-settle linear both;
         animation-timeline: view();
-        animation-range: entry 2% cover 20%;
+        animation-range: entry 4% cover 14%;
       }
     }
   }
@@ -350,13 +412,19 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html.theme-ready body,
-  html.theme-ready body * { transition-duration: 0.001ms !important; }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
+    /* keep colour / opacity / state transitions legible; drop the length */
+    transition-duration: 120ms !important;
   }
-  .rise { opacity: 1 !important; transform: none !important; }
+  .rise,
+  .reveal,
+  .stagger-item,
+  .rec-enter .lineno,
+  .rec-enter .rec-body { opacity: 1 !important; transform: none !important; clip-path: none !important; }
+  .rec-enter .custody-line::before { transform: none !important; }
+  .skeleton-shimmer { animation: none !important; }
 }
 
 /* ReactFlow: the spawn graph stays a blueprint (dark ground) in both themes */

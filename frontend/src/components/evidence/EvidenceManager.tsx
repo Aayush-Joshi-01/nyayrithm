@@ -77,8 +77,10 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
       <div
         {...getRootProps()}
         className={cn(
-          "cursor-pointer rounded-lg border border-dashed p-10 text-center transition-colors",
-          isDragActive ? "border-brass bg-brass/[0.06]" : "border-border hover:border-brass/50 hover:bg-accent/20"
+          "cursor-pointer rounded-lg border border-dashed p-10 text-center transition-[border-color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          isDragActive
+            ? "-translate-y-0.5 scale-[1.008] border-brass bg-brass/[0.06] shadow-chamber-sm"
+            : "border-border hover:border-brass/50 hover:bg-accent/20"
         )}
       >
         <input {...getInputProps()} />
@@ -89,12 +91,18 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <Upload className="h-7 w-7 text-foreground/35" strokeWidth={1.5} />
+            <Upload
+              className={cn(
+                "h-7 w-7 transition-[transform,color] duration-200",
+                isDragActive ? "-translate-y-0.5 text-brass-text" : "text-foreground/35"
+              )}
+              strokeWidth={1.5}
+            />
             <p className="font-serif text-[0.95rem] text-foreground/80">
               {isDragActive ? "Drop to enter it" : "Drop files, or click to choose"}
             </p>
             <p className="font-mono text-[0.68rem] uppercase tracking-wide text-foreground/30">
-              PDF · DOCX · MP3 · MP4 · JPG · PNG · TXT
+              PDF, DOCX, MP3, MP4, JPG, PNG, TXT
             </p>
           </div>
         )}
@@ -103,7 +111,7 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
       {isLoading ? (
         <div className="space-y-2">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-lg border border-hairline bg-bone/[0.04]" />
+            <div key={i} className="skeleton-shimmer h-16 rounded-lg border border-hairline bg-bone/[0.04]" />
           ))}
         </div>
       ) : (
@@ -120,7 +128,7 @@ export function EvidenceManager({ caseId }: { caseId: string }) {
                     {ev.chunk_count > 0 && ` / ${ev.chunk_count} chunks`}
                   </p>
                 </div>
-                <span className={cn("rounded-sm px-1.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-wide", STATUS_STYLES[ev.status])}>
+                <span className={cn("rounded-sm px-1.5 py-0.5 font-mono text-[0.62rem] uppercase tracking-wide transition-colors duration-500", STATUS_STYLES[ev.status])}>
                   {ev.status}
                 </span>
                 {(ev.status === "error" || ev.status === "indexed") && (
