@@ -3,7 +3,6 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Scale } from "lucide-react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
@@ -47,14 +46,9 @@ export function CaseCreateModal({ open, onClose, onSubmit, loading }: Props) {
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-              <Scale className="w-4 h-4 text-amber-400" />
-            </div>
-            <DialogTitle>New Case</DialogTitle>
-          </div>
+          <DialogTitle>Open a case</DialogTitle>
           <DialogDescription>
-            Create a legal case to organise evidence and run courtroom simulations.
+            A case holds the evidence for one matter and every proceeding you run against it.
           </DialogDescription>
         </DialogHeader>
 
@@ -63,13 +57,13 @@ export function CaseCreateModal({ open, onClose, onSubmit, loading }: Props) {
           className="space-y-4 mt-2"
         >
           <div className="space-y-1.5">
-            <Label htmlFor="title">Case Title *</Label>
+            <Label htmlFor="title">Case title</Label>
             <Input
               id="title"
               {...register("title")}
-              placeholder="e.g., State vs. Kumar — 2024"
+              placeholder="State v. Kumar, 2024"
             />
-            {errors.title && <p className="text-red-400 text-xs">{errors.title.message}</p>}
+            {errors.title && <p className="text-[0.72rem] text-oxblood-bright">{errors.title.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -90,7 +84,7 @@ export function CaseCreateModal({ open, onClose, onSubmit, loading }: Props) {
                 {...register("country")}
                 placeholder="India"
               />
-              {errors.country && <p className="text-red-400 text-xs">{errors.country.message}</p>}
+              {errors.country && <p className="text-[0.72rem] text-oxblood-bright">{errors.country.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="jurisdiction">Jurisdiction</Label>
@@ -124,8 +118,8 @@ export function CaseCreateModal({ open, onClose, onSubmit, loading }: Props) {
             <Button type="button" variant="ghost" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="amber" disabled={loading}>
-              {loading ? "Creating…" : "Create Case"}
+            <Button type="submit" disabled={loading}>
+              {loading ? "Opening" : "Open case"}
             </Button>
           </DialogFooter>
         </form>

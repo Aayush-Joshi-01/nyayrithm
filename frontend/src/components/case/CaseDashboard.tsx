@@ -2,14 +2,13 @@
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Plus, FolderOpen, Search, Scale } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { casesApi } from "@/lib/api"
 import { CaseCard } from "./CaseCard"
 import { CaseCreateModal } from "./CaseCreateModal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
 import type { Case } from "@/types/api"
 
 export function CaseDashboard() {
@@ -39,55 +38,39 @@ export function CaseDashboard() {
       )
     : cases
 
-  const statusCounts = cases.reduce<Record<string, number>>((acc, c) => {
+  const counts = cases.reduce<Record<string, number>>((acc, c) => {
     acc[c.status] = (acc[c.status] ?? 0) + 1
     return acc
   }, {})
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-6xl">
+      <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Cases</h1>
-          <p className="text-sm text-white/40 mt-1">
-            Manage legal cases and courtroom simulations
+          <h1 className="font-serif text-2xl font-medium tracking-tight text-bone">Cases</h1>
+          <p className="mt-1 text-[0.85rem] text-foreground/45">
+            {cases.length > 0 ? (
+              <span className="tabular font-mono text-[0.78rem]">
+                {cases.length} on the docket
+                {counts.in_simulation ? `, ${counts.in_simulation} in session` : ""}
+                {counts.closed ? `, ${counts.closed} closed` : ""}
+              </span>
+            ) : (
+              "Assemble evidence, seat a bench, run a proceeding."
+            )}
           </p>
         </div>
-        <Button variant="amber" onClick={() => setOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          New Case
+        <Button onClick={() => setOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
+          New case
         </Button>
       </div>
 
-      {/* Stats */}
       {!isLoading && cases.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/50 flex items-center gap-2">
-            <Scale className="w-3.5 h-3.5 text-amber-400" />
-            <span className="font-medium text-white/70">{cases.length}</span>
-            total cases
-          </div>
-          {statusCounts.open && (
-            <Badge variant="success" className="text-xs">{statusCounts.open} open</Badge>
-          )}
-          {statusCounts.in_simulation && (
-            <Badge variant="warning" className="text-xs animate-pulse-slow">
-              {statusCounts.in_simulation} simulating
-            </Badge>
-          )}
-          {statusCounts.closed && (
-            <Badge variant="muted" className="text-xs">{statusCounts.closed} closed</Badge>
-          )}
-        </div>
-      )}
-
-      {/* Search */}
-      {!isLoading && cases.length > 0 && (
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+        <div className="relative mt-8 max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground/25" strokeWidth={1.75} />
           <Input
-            placeholder="Search cases…"
+            placeholder="Search the docket"
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -95,43 +78,53 @@ export function CaseDashboard() {
         </div>
       )}
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-48 rounded-xl" />
-          ))}
-        </div>
-      ) : filtered.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((c) => (
-            <CaseCard key={c.id} case_={c} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
-            <FolderOpen className="w-7 h-7 text-amber-400/60" />
+      <div className="mt-8">
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-44" />
+            ))}
           </div>
-          <h3 className="text-white/60 font-semibold mb-1">
-            {search ? "No cases found" : "No cases yet"}
-          </h3>
-          <p className="text-white/30 text-sm mb-6">
-            {search ? "Try a different search term." : "Create your first case to get started."}
-          </p>
-          {!search && (
-            <Button variant="amber" onClick={() => setOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              New Case
-            </Button>
-          )}
-        </div>
-      )}
+        ) : filtered.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((c) => (
+              <CaseCard key={c.id} case_={c} />
+            ))}
+          </div>
+        ) : search ? (
+          <div className="border-t border-hairline py-20 text-center">
+            <p className="font-serif text-[1.05rem] text-foreground/55">
+              Nothing on the docket matches &ldquo;{search}&rdquo;.
+            </p>
+            <button
+              onClick={() => setSearch("")}
+              className="mt-3 font-mono text-xs uppercase tracking-wide text-brass-text hover:text-brass-lit"
+            >
+              Clear search
+            </button>
+          </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-lg border border-border bg-ink-raised/60 px-8 py-16 text-center">
+            <div className="pointer-events-none absolute inset-0 bench-light-tight opacity-60" />
+            <div className="relative">
+              <p className="font-serif text-xl font-medium text-bone">The docket is empty.</p>
+              <p className="mx-auto mt-3 max-w-sm text-[0.9rem] leading-relaxed text-foreground/50">
+                A case holds the evidence for one matter and every proceeding you
+                run against it. Open the first one to begin.
+              </p>
+              <Button className="mt-7" onClick={() => setOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" strokeWidth={2} />
+                Open a case
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <CaseCreateModal
         open={open}
         onClose={() => setOpen(false)}
-        onSubmit={(data) => createMutation.mutate(data)}
+        onSubmit={(d) => createMutation.mutate(d)}
         loading={createMutation.isPending}
       />
     </div>

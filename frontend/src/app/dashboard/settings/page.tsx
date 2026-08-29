@@ -1,21 +1,20 @@
-import { Settings } from "lucide-react"
+import { PageScroll } from "@/components/layout/PageScroll"
 
 export default function SettingsPage() {
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-          <Settings className="w-5 h-5 text-white/50" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Settings</h1>
-          <p className="text-white/40 text-sm mt-0.5">Manage your workspace preferences</p>
-        </div>
-      </div>
+    <PageScroll>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="font-serif text-2xl font-medium tracking-tight text-bone">Settings</h1>
+      <p className="mt-1 text-[0.88rem] text-foreground/45">Workspace preferences.</p>
 
-      <div className="rounded-2xl border border-white/10 bg-white/3 p-8 text-center">
-        <p className="text-white/30 text-sm">Settings coming soon.</p>
+      <div className="mt-8 rounded-lg border border-border bg-ink-raised/60 px-8 py-16 text-center">
+        <p className="font-serif text-[1.05rem] text-foreground/55">Nothing to configure yet.</p>
+        <p className="mx-auto mt-2 max-w-xs text-[0.85rem] leading-relaxed text-foreground/40">
+          Provider keys, database, and storage are set in <code className="font-mono text-brass-text">.env</code>.
+          Per-workspace settings will land here.
+        </p>
       </div>
     </div>
+    </PageScroll>
   )
 }
