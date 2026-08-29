@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ALGORITHM: str = "HS256"
 
+    # Simulation pacing — seconds to wait between turns. Keeps the turn loop
+    # under free-tier LLM rate limits (Gemini flash free tier is ~10 RPM).
+    SIMULATION_TURN_DELAY_SECONDS: float = 7.0
+
     def get_api_key(self, provider: str) -> str | None:
         return {
             "openai": self.OPENAI_API_KEY,
