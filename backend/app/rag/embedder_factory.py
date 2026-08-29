@@ -19,6 +19,10 @@ def get_embedder() -> Embedder:
         from app.rag.embedder import SentenceTransformerEmbedder
         return SentenceTransformerEmbedder()
 
+    if backend == "gemini":
+        from app.rag.embedder import GeminiEmbedder
+        return GeminiEmbedder(api_key=settings.GEMINI_API_KEY or "")
+
     raise NotImplementedError(
         f"Embedder backend '{backend}' not implemented. "
         "Add a class to app/rag/embedder.py and register it here."
