@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: ["class", '[data-theme="dark"]'],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -15,6 +15,10 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
         primary: {
           DEFAULT: "hsl(var(--primary))",
@@ -32,70 +36,76 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        // Role colors
+
+        /* The Night Court world — theme-aware via RGB channel variables */
+        ink: {
+          DEFAULT: "rgb(var(--ground) / <alpha-value>)",
+          raised: "rgb(var(--raised) / <alpha-value>)",
+          higher: "rgb(var(--higher) / <alpha-value>)",
+        },
+        bone: "rgb(var(--text) / <alpha-value>)",
+        brass: {
+          DEFAULT: "rgb(var(--brass) / <alpha-value>)",
+          lit: "rgb(var(--brass-lit) / <alpha-value>)",
+          text: "rgb(var(--brass-text) / <alpha-value>)",
+        },
+        oxblood: {
+          DEFAULT: "rgb(var(--oxblood) / <alpha-value>)",
+          bright: "rgb(var(--oxblood-bright) / <alpha-value>)",
+        },
+        ember: {
+          DEFAULT: "rgb(var(--ember) / <alpha-value>)",
+          text: "rgb(var(--ember-text) / <alpha-value>)",
+        },
         role: {
-          judge: "#f59e0b",
-          prosecutor: "#ef4444",
-          defense: "#3b82f6",
-          plaintiff: "#8b5cf6",
-          accused: "#ec4899",
-          witness: "#10b981",
-          investigator: "#f97316",
-          expert_witness: "#06b6d4",
+          judge: "rgb(var(--role-judge) / <alpha-value>)",
+          prosecutor: "rgb(var(--role-prosecutor) / <alpha-value>)",
+          defense: "rgb(var(--role-defense) / <alpha-value>)",
+          plaintiff: "rgb(var(--role-plaintiff) / <alpha-value>)",
+          accused: "rgb(var(--role-accused) / <alpha-value>)",
+          witness: "rgb(var(--role-witness) / <alpha-value>)",
+          investigator: "rgb(var(--role-investigator) / <alpha-value>)",
+          expert_witness: "rgb(var(--role-expert-witness) / <alpha-value>)",
+          custom: "rgb(var(--role-custom) / <alpha-value>)",
         },
       },
-      borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "fade-up": "fade-up 0.6s ease-out forwards",
-        "fade-in": "fade-in 0.8s ease-out forwards",
-        "scale-in": "scale-in 0.5s ease-out forwards",
-        shimmer: "shimmer 3s linear infinite",
-        "gavel-drop": "gavel-drop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards",
-        float: "float 4s ease-in-out infinite",
-      },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "sans-serif"],
-        serif: ["var(--font-playfair)", "Georgia", "serif"],
-        display: ["var(--font-cinzel)", "var(--font-playfair)", "Georgia", "serif"],
-        mono: ["JetBrains Mono", "Fira Code", "monospace"],
+        sans: ["var(--font-franklin)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["var(--font-spectral)", "Iowan Old Style", "Georgia", "serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      borderRadius: {
+        lg: "calc(var(--radius) + 3px)",
+        md: "var(--radius)",
+        sm: "calc(var(--radius) - 1px)",
+      },
+      letterSpacing: {
+        caption: "0.34em",
+      },
+      boxShadow: {
+        chamber: "var(--shadow-chamber)",
+        "chamber-sm": "var(--shadow-chamber-sm)",
       },
       keyframes: {
         "fade-up": {
-          "0%": { opacity: "0", transform: "translateY(24px)" },
+          "0%": { opacity: "0", transform: "translateY(18px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "fade-in": {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
         },
-        "scale-in": {
-          "0%": { opacity: "0", transform: "scale(0.94)" },
-          "100%": { opacity: "1", transform: "scale(1)" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
-        },
-        "gavel-drop": {
-          "0%": { transform: "rotate(-40deg) translateY(-10px)", opacity: "0" },
-          "60%": { transform: "rotate(0deg) translateY(0px)", opacity: "1" },
-          "75%": { transform: "rotate(3deg)" },
-          "100%": { transform: "rotate(0deg)" },
-        },
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-8px)" },
-        },
+      },
+      animation: {
+        "fade-up": "fade-up 0.6s cubic-bezier(0.16,1,0.3,1) forwards",
+        marquee: "marquee 40s linear infinite",
       },
     },
   },

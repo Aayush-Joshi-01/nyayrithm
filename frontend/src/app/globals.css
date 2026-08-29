@@ -2,127 +2,377 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   THE NIGHT COURT / THE COURT IN SESSION
+   One world, two times of day. Light is the default; dark is the working-late
+   counterpart. Brass (200 138 74) and ember (255 122 61) are the same brand
+   accents in both; only the room around them changes.
+   Colour tokens are RGB channel triples so Tailwind `/opacity` works.
+   ========================================================================= */
+
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
-    --card: 224 71% 6%;
-    --card-foreground: 213 31% 91%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
-    --ring: 216 34% 17%;
-    --radius: 0.5rem;
+    /* ---- light: "the court, in session" (daylight, institutional) ---- */
+    --background: 220 16% 96%;
+    --foreground: 222 20% 12%;
+    --card: 240 20% 99%;
+    --card-foreground: 222 20% 12%;
+    --popover: 240 24% 99%;
+    --popover-foreground: 222 20% 12%;
+    --primary: 31 52% 52%;
+    --primary-foreground: 26 45% 8%;
+    --secondary: 220 14% 90%;
+    --secondary-foreground: 222 18% 18%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 222 9% 38%;
+    --accent: 220 15% 90%;
+    --accent-foreground: 222 18% 16%;
+    --destructive: 6 58% 40%;
+    --destructive-foreground: 40 40% 96%;
+    --border: 220 13% 84%;
+    --input: 220 13% 86%;
+    --ring: 31 52% 46%;
+    --radius: 0.1875rem;
+
+    --ground: 242 243 245;
+    --raised: 251 251 252;
+    --higher: 245 246 248;
+    --text: 25 29 37;
+    --text-muted: 89 96 110;
+    --brass: 200 138 74;
+    --brass-text: 138 90 34;
+    --brass-lit: 181 118 47;
+    --oxblood: 110 31 42;
+    --oxblood-bright: 166 51 40;
+    --ember: 255 122 61;
+    --ember-text: 196 73 28;
+    --prov-inferred: 108 116 132;
+
+    --role-judge: 169 114 44;
+    --role-prosecutor: 166 51 40;
+    --role-defense: 63 100 145;
+    --role-plaintiff: 110 91 150;
+    --role-accused: 152 84 122;
+    --role-witness: 76 126 100;
+    --role-investigator: 166 94 40;
+    --role-expert-witness: 60 118 131;
+    --role-custom: 107 103 92;
+
+    --hairline: rgba(18, 22, 32, 0.11);
+    --hairline-strong: rgba(18, 22, 32, 0.17);
+    --grain-opacity: 0.4;
+    --grain-blend: multiply;
+    --podium: rgba(242, 243, 245, 0.82);
+    --bench-a: rgba(200, 138, 74, 0.10);
+    --bench-b: rgba(200, 138, 74, 0.04);
+    --shadow-chamber: 0 20px 55px -22px rgba(20, 25, 40, 0.30), 0 4px 14px -8px rgba(20, 25, 40, 0.14);
+    --shadow-chamber-sm: 0 10px 28px -14px rgba(20, 25, 40, 0.22);
+
+    color-scheme: light;
   }
+
+  /* dark palette, applied by an attribute OR by system preference */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --background: 222 30% 6%;
+      --foreground: 40 34% 87%;
+      --card: 221 24% 9%;
+      --card-foreground: 40 34% 87%;
+      --popover: 221 26% 8%;
+      --popover-foreground: 40 34% 87%;
+      --primary: 31 52% 55%;
+      --primary-foreground: 26 45% 7%;
+      --secondary: 221 19% 15%;
+      --secondary-foreground: 40 28% 82%;
+      --muted: 221 18% 13%;
+      --muted-foreground: 38 10% 62%;
+      --accent: 221 20% 16%;
+      --accent-foreground: 40 28% 84%;
+      --destructive: 4 55% 46%;
+      --destructive-foreground: 40 34% 92%;
+      --border: 220 14% 19%;
+      --input: 220 14% 16%;
+      --ring: 31 52% 55%;
+
+      --ground: 11 14 20;
+      --raised: 16 20 28;
+      --higher: 22 28 39;
+      --text: 236 227 210;
+      --text-muted: 154 147 132;
+      --brass-text: 214 160 99;
+      --brass-lit: 232 182 118;
+      --oxblood-bright: 192 69 60;
+      --ember-text: 255 149 96;
+      --prov-inferred: 139 147 164;
+
+      --role-judge: 214 155 88;
+      --role-prosecutor: 192 69 60;
+      --role-defense: 91 127 166;
+      --role-plaintiff: 142 123 176;
+      --role-accused: 178 110 138;
+      --role-witness: 110 158 134;
+      --role-investigator: 199 127 74;
+      --role-expert-witness: 94 147 160;
+      --role-custom: 138 133 120;
+
+      --hairline: rgba(236, 227, 210, 0.10);
+      --hairline-strong: rgba(236, 227, 210, 0.16);
+      --grain-opacity: 0.04;
+      --grain-blend: normal;
+      --podium: rgba(11, 14, 20, 0.86);
+      --bench-a: rgba(232, 182, 118, 0.16);
+      --bench-b: rgba(200, 138, 74, 0.06);
+      --shadow-chamber: 0 26px 72px -24px rgba(0, 0, 0, 0.7), 0 6px 20px -10px rgba(0, 0, 0, 0.5);
+      --shadow-chamber-sm: 0 14px 36px -16px rgba(0, 0, 0, 0.55);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --background: 222 30% 6%;
+    --foreground: 40 34% 87%;
+    --card: 221 24% 9%;
+    --card-foreground: 40 34% 87%;
+    --popover: 221 26% 8%;
+    --popover-foreground: 40 34% 87%;
+    --primary: 31 52% 55%;
+    --primary-foreground: 26 45% 7%;
+    --secondary: 221 19% 15%;
+    --secondary-foreground: 40 28% 82%;
+    --muted: 221 18% 13%;
+    --muted-foreground: 38 10% 62%;
+    --accent: 221 20% 16%;
+    --accent-foreground: 40 28% 84%;
+    --destructive: 4 55% 46%;
+    --destructive-foreground: 40 34% 92%;
+    --border: 220 14% 19%;
+    --input: 220 14% 16%;
+    --ring: 31 52% 55%;
+
+    --ground: 11 14 20;
+    --raised: 16 20 28;
+    --higher: 22 28 39;
+    --text: 236 227 210;
+    --text-muted: 154 147 132;
+    --brass-text: 214 160 99;
+    --brass-lit: 232 182 118;
+    --oxblood-bright: 192 69 60;
+    --ember-text: 255 149 96;
+    --prov-inferred: 139 147 164;
+
+    --role-judge: 214 155 88;
+    --role-prosecutor: 192 69 60;
+    --role-defense: 91 127 166;
+    --role-plaintiff: 142 123 176;
+    --role-accused: 178 110 138;
+    --role-witness: 110 158 134;
+    --role-investigator: 199 127 74;
+    --role-expert-witness: 94 147 160;
+    --role-custom: 138 133 120;
+
+    --hairline: rgba(236, 227, 210, 0.10);
+    --hairline-strong: rgba(236, 227, 210, 0.16);
+    --grain-opacity: 0.04;
+    --grain-blend: normal;
+    --podium: rgba(11, 14, 20, 0.86);
+    --bench-a: rgba(232, 182, 118, 0.16);
+    --bench-b: rgba(200, 138, 74, 0.06);
+    --shadow-chamber: 0 26px 72px -24px rgba(0, 0, 0, 0.7), 0 6px 20px -10px rgba(0, 0, 0, 0.5);
+    --shadow-chamber-sm: 0 14px 36px -16px rgba(0, 0, 0, 0.55);
+  }
+
+  :root[data-theme="dark"] { color-scheme: dark; }
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
+  * { @apply border-border; }
+
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
   }
-  ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+
+  html.theme-ready body,
+  html.theme-ready body * {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
   }
-  ::-webkit-scrollbar-track {
-    @apply bg-background;
+
+  ::selection {
+    background: rgb(var(--ember) / 0.26);
+    color: rgb(var(--text));
   }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: rgb(var(--ground)); }
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted rounded-full;
+    background: rgb(var(--text) / 0.16);
+    border: 3px solid rgb(var(--ground));
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgb(var(--text) / 0.28); }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--text) / 0.18) rgb(var(--ground)); }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--brass));
+    outline-offset: 2px;
+    border-radius: 1px;
+  }
+
+  input, textarea { caret-color: rgb(var(--ember)); }
+
+  .tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+}
+
+/* ============================================================================
+   SIGNATURE UTILITIES
+   ========================================================================= */
+
+@layer components {
+  .bench-light {
+    background: radial-gradient(62% 48% at 50% 34%, var(--bench-a) 0%, var(--bench-b) 38%, transparent 74%);
+  }
+  .bench-light-tight {
+    background: radial-gradient(44% 40% at 50% 40%, var(--bench-a) 0%, var(--bench-b) 46%, transparent 78%);
+  }
+
+  .court-grain {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    opacity: var(--grain-opacity);
+    mix-blend-mode: var(--grain-blend);
+  }
+
+  .hairline-t { border-top: 1px solid var(--hairline); }
+  .hairline-b { border-bottom: 1px solid var(--hairline); }
+  .hairline-l { border-left: 1px solid var(--hairline); }
+  .hairline-r { border-right: 1px solid var(--hairline); }
+
+  .podium-edge {
+    background: var(--podium);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+
+  /* the custody line: provenance in the margin, not a chip */
+  .custody-line { position: relative; padding-left: 1.15rem; }
+  .custody-line::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    bottom: 0.15rem;
+    width: 1px;
+    background: rgb(var(--brass-text));
+    opacity: 0.55;
+  }
+  .custody-line[data-prov="inferred"]::before {
+    background: repeating-linear-gradient(to bottom, rgb(var(--prov-inferred)) 0 3px, transparent 3px 7px);
+    opacity: 0.8;
+  }
+  .custody-line[data-prov="disputed"]::before {
+    background: rgb(var(--oxblood-bright));
+    opacity: 0.8;
+  }
+
+  /* what is LIVE: a solid ember edge and a full-strength read. No glow. */
+  .struck { color: rgb(var(--text)); }
+  .struck .custody-line::before,
+  .custody-line.struck-edge::before {
+    width: 2px;
+    background: rgb(var(--ember));
+    opacity: 1;
+  }
+  .afterglow { color: rgb(var(--text) / 0.62); }
+  .ghost { opacity: 0.4; filter: saturate(0.6); }
+
+  /* a citation is stitched to its exact source */
+  .seam {
+    text-decoration: none;
+    background-image: linear-gradient(to right, rgb(var(--ember) / 0.55) 0, rgb(var(--ember) / 0.55) 100%);
+    background-repeat: repeat-x;
+    background-size: 4px 1px;
+    background-position: 0 1.15em;
+    padding-bottom: 1px;
+  }
+
+  .record-line { display: grid; grid-template-columns: 2.5rem 1fr; column-gap: 0.9rem; }
+  .record-line > .lineno {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: rgb(var(--text) / 0.3);
+    text-align: right;
+    padding-top: 0.28rem;
+    user-select: none;
+  }
+
+  .caption-rule {
+    background: linear-gradient(90deg, transparent, var(--hairline-strong) 12%, var(--hairline-strong) 88%, transparent);
+    height: 1px;
   }
 }
 
-/* Streaming text cursor */
-.streaming-cursor::after {
-  content: "▋";
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  50% { opacity: 0; }
-}
+/* ============================================================================
+   MOTION: one authored moment; a tint fade for arrivals, never a bloom
+   ========================================================================= */
 
 @layer utilities {
-  .glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes arrive-tint {
+    0% { background-color: rgb(var(--ember) / 0.12); }
+    100% { background-color: transparent; }
+  }
+  @keyframes docket-blink { 50% { opacity: 0.25; } }
+
+  .rise { animation: rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .arrive { animation: arrive-tint 1s ease-out both; }
+
+  /* scroll-driven section reveal: enhancement only, content visible by default */
+  .reveal { opacity: 1; }
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: rise-in linear both;
+        animation-timeline: view();
+        animation-range: entry 2% cover 20%;
+      }
+    }
+  }
+  .streaming-cursor::after {
+    content: "▍";
+    color: rgb(var(--ember));
+    animation: docket-blink 1s step-end infinite;
+    margin-left: 1px;
   }
 }
 
-/* Landing page — legal watermark layer */
-.legal-watermark {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    transparent,
-    transparent 60px,
-    rgba(245, 158, 11, 0.015) 60px,
-    rgba(245, 158, 11, 0.015) 61px
-  );
+@media (prefers-reduced-motion: reduce) {
+  html.theme-ready body,
+  html.theme-ready body * { transition-duration: 0.001ms !important; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  .rise { opacity: 1 !important; transform: none !important; }
 }
 
-/* Shimmer text */
-.shimmer-text {
-  background: linear-gradient(
-    90deg,
-    rgba(245,158,11,0.6) 0%,
-    rgba(245,158,11,1) 40%,
-    rgba(255,255,255,0.9) 50%,
-    rgba(245,158,11,1) 60%,
-    rgba(245,158,11,0.6) 100%
-  );
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shimmer 4s linear infinite;
-}
-
-/* Court column divider */
-.court-divider {
-  background: linear-gradient(90deg, transparent, rgba(245,158,11,0.4), rgba(245,158,11,0.8), rgba(245,158,11,0.4), transparent);
-  height: 1px;
-}
-
-/* Frosted card */
-.frosted-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
-
-/* Darker frosted card — for sections where the background is very vivid */
-.frosted-card-dark {
-  background: rgba(4, 6, 16, 0.72);
-  border: 1px solid rgba(255,255,255,0.09);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-}
-
-/* ReactFlow dark theme overrides */
+/* ReactFlow: the spawn graph stays a blueprint (dark ground) in both themes */
+.react-flow, .react-flow__renderer, .react-flow__background { background: #0B0E14; }
 .react-flow__controls {
-  background: rgba(15, 23, 42, 0.9) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 8px !important;
+  background: rgba(16, 20, 28, 0.92) !important;
+  border: 1px solid rgba(236, 227, 210, 0.16) !important;
+  border-radius: 3px !important;
+  box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.7) !important;
 }
 .react-flow__controls-button {
   background: transparent !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: rgba(255, 255, 255, 0.4) !important;
-  fill: rgba(255, 255, 255, 0.4) !important;
+  border-color: rgba(236, 227, 210, 0.10) !important;
+  color: rgba(236, 227, 210, 0.5) !important;
+  fill: rgba(236, 227, 210, 0.5) !important;
 }
-.react-flow__controls-button:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-}
-.react-flow__attribution {
-  display: none;
-}
+.react-flow__controls-button:hover { background: rgba(236, 227, 210, 0.06) !important; }
+.react-flow__attribution { display: none; }
+.react-flow__edge-path { stroke-opacity: 0.55; }

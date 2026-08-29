@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Play, Trash2, Plus, Loader2 } from "lucide-react"
 import { simulationsApi } from "@/lib/api"
-import { formatRole } from "@/lib/utils"
+import { formatRole, roleStyle, ROLE_SIGIL } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -33,12 +33,10 @@ export function AgentSetup({ simId, onStarted }: { simId: string; onStarted: () 
     mutationFn: () => simulationsApi.addAgent(simId, { role, name: name.trim() || formatRole(role) }),
     onSuccess: () => { setName(""); invalidate() },
   })
-
   const removeMutation = useMutation({
     mutationFn: (agentId: string) => simulationsApi.deleteAgent(simId, agentId),
     onSuccess: invalidate,
   })
-
   const startMutation = useMutation({
     mutationFn: () => simulationsApi.start(simId),
     onSuccess: () => {
@@ -48,81 +46,84 @@ export function AgentSetup({ simId, onStarted }: { simId: string; onStarted: () 
   })
 
   return (
-    <div className="max-w-2xl mx-auto w-full p-6 space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-7 p-8">
       <div>
-        <h3 className="text-sm font-semibold text-foreground">Agent roster</h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          A default roster was seeded for this scenario. Add or remove roles, then start the proceedings.
+        <h3 className="font-serif text-lg font-medium text-bone">Seat the bench</h3>
+        <p className="mt-1 text-[0.85rem] leading-relaxed text-foreground/45">
+          A default roster was seeded for this scenario. Add or strike roles, then call the
+          proceeding to order. Two agents is the minimum.
         </p>
       </div>
 
-      <div className="space-y-2">
-        {isLoading && <p className="text-xs text-muted-foreground">Loading agents…</p>}
-        {agents.map((a) => (
-          <div key={a.id} className="flex items-center gap-3 rounded-lg border border-border bg-card/50 px-3 py-2">
-            <span className="text-sm font-medium text-foreground flex-1 truncate">{a.name}</span>
-            <span className="text-xs text-muted-foreground">{formatRole(a.role)}</span>
-            <span className="text-[10px] font-mono text-muted-foreground/60">{a.llm_model}</span>
-            <button
-              onClick={() => removeMutation.mutate(a.id)}
-              disabled={removeMutation.isPending}
-              className="text-muted-foreground hover:text-red-400 transition-colors"
-              title="Remove agent"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
+      <div className="divide-y divide-hairline border-y border-hairline">
+        {isLoading && <p className="py-3 font-mono text-[0.72rem] text-foreground/40">Loading the roster</p>}
+        {agents.map((a) => {
+          return (
+            <div key={a.id} className="flex items-center gap-3 py-2.5">
+              <span
+                className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-sm border font-mono text-[0.6rem] font-semibold"
+                style={roleStyle(a.role as AgentRole)}
+              >
+                {ROLE_SIGIL[a.role as AgentRole]}
+              </span>
+              <span className="flex-1 truncate font-serif text-[0.9rem] font-medium text-foreground/85">{a.name}</span>
+              <span className="font-mono text-[0.68rem] uppercase tracking-wide text-foreground/40">{formatRole(a.role)}</span>
+              <span className="hidden font-mono text-[0.64rem] text-foreground/45 sm:inline">{a.llm_model}</span>
+              <button
+                onClick={() => removeMutation.mutate(a.id)}
+                disabled={removeMutation.isPending}
+                className="text-foreground/25 transition-colors hover:text-oxblood-bright"
+                title="Strike from the roster"
+              >
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            </div>
+          )
+        })}
         {!isLoading && agents.length === 0 && (
-          <p className="text-xs text-amber-400">No agents yet — add at least two to run a simulation.</p>
+          <p className="py-3 text-[0.82rem] text-brass-text">No agents yet. Add at least two to run a proceeding.</p>
         )}
       </div>
 
       <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <Input
-            placeholder="Agent name (optional)"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="h-9 text-sm"
-          />
-        </div>
+        <Input
+          placeholder="Agent name (optional)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="h-9 flex-1"
+        />
         <Select value={role} onValueChange={(v) => setRole(v as AgentRole)}>
-          <SelectTrigger className="h-9 w-40 text-sm"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             {ROLES.map((r) => (
-              <SelectItem key={r} value={r} className="text-sm">{formatRole(r)}</SelectItem>
+              <SelectItem key={r} value={r}>{formatRole(r)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => addMutation.mutate()}
-          disabled={addMutation.isPending}
-          className="h-9 border border-border"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1" /> Add
+        <Button size="sm" variant="outline" onClick={() => addMutation.mutate()} disabled={addMutation.isPending} className="h-9">
+          <Plus className="mr-1 h-3.5 w-3.5" strokeWidth={2} /> Add
         </Button>
       </div>
 
       {(addMutation.isError || removeMutation.isError) && (
-        <p className="text-xs text-red-400">Could not update the roster. Is the backend running?</p>
+        <p className="text-[0.78rem] text-oxblood-bright">Could not update the roster. Is the backend running?</p>
       )}
 
-      <div className="pt-2 border-t border-border">
+      <div className="border-t border-hairline pt-4">
         <Button
           onClick={() => startMutation.mutate()}
           disabled={startMutation.isPending || agents.length < 2}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black"
+          className="w-full"
         >
           {startMutation.isPending
-            ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            : <Play className="w-4 h-4 mr-2" />}
-          Start Proceedings
+            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            : <Play className="mr-2 h-4 w-4" strokeWidth={2} />}
+          Call to order
         </Button>
         {startMutation.isError && (
-          <p className="text-xs text-red-400 mt-2 text-center">Failed to start. Check the backend and try again.</p>
+          <p className="mt-2 text-center text-[0.78rem] text-oxblood-bright">
+            Could not start. Check the backend and try again.
+          </p>
         )}
       </div>
     </div>

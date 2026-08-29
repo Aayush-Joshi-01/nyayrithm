@@ -18,7 +18,7 @@ import ReactFlow, {
 } from "reactflow"
 import "reactflow/dist/style.css"
 import { useSimulationStore } from "@/store/simulationStore"
-import { ROLE_HEX, formatRole } from "@/lib/utils"
+import { ROLE_HEX, ROLE_SIGIL, formatRole } from "@/lib/utils"
 import type { AgentRole } from "@/types/api"
 
 function buildLayout(
@@ -42,24 +42,42 @@ function buildLayout(
     level++
   }
 
-  // count per level first so each row can be centred
+  // count per level so each row can be centred
   const totalPerLevel: Record<number, number> = {}
   for (const n of nodes) {
     const lv = levels[n.id] ?? 0
     totalPerLevel[lv] = (totalPerLevel[lv] ?? 0) + 1
   }
 
-  const COL = 230
-  const ROW = 160
+  const COL = 190
+  const ROW = 130
+  const MAX_PER_ROW = 6 // wrap wide levels into a block instead of one long line
   const seen: Record<number, number> = {}
   const positions: { x: number; y: number }[] = []
+
+  // running vertical offset per level (levels with wrapped rows push later levels down)
+  const levelY: Record<number, number> = {}
+  const sortedLevels = [...new Set(Object.values(levels))].sort((a, b) => a - b)
+  let yCursor = 0
+  for (const lv of sortedLevels) {
+    levelY[lv] = yCursor
+    const rowsInLevel = Math.ceil((totalPerLevel[lv] ?? 1) / MAX_PER_ROW)
+    yCursor += Math.max(1, rowsInLevel) * ROW + ROW * 0.4
+  }
 
   for (const n of nodes) {
     const lv = levels[n.id] ?? 0
     const idx = seen[lv] ?? 0
     seen[lv] = idx + 1
-    const rowWidth = (totalPerLevel[lv] - 1) * COL
-    positions.push({ x: idx * COL - rowWidth / 2, y: lv * ROW })
+
+    const perRow = Math.min(totalPerLevel[lv] ?? 1, MAX_PER_ROW)
+    const col = idx % perRow
+    const subRow = Math.floor(idx / perRow)
+    const rowWidth = (perRow - 1) * COL
+    positions.push({
+      x: col * COL - rowWidth / 2,
+      y: (levelY[lv] ?? lv * ROW) + subRow * ROW,
+    })
   }
 
   return positions
@@ -78,44 +96,50 @@ function AgentNode({ data }: NodeProps<AgentNodeData>) {
   const isDismissed = data.status === "dismissed"
   const isSuspended = data.status === "suspended"
 
+  const dormant = isDismissed || isSuspended
+
   return (
     <div
-      className="relative px-3 py-2.5 rounded-lg text-center min-w-[140px]"
+      className="relative min-w-[150px] rounded-sm px-3 py-2.5 text-center"
       style={{
-        background: `${data.color}12`,
-        border: `1.5px ${isSpawned ? "dashed" : "solid"} ${data.color}${isDismissed ? "40" : "80"}`,
-        opacity: isDismissed || isSuspended ? 0.5 : 1,
-        boxShadow: `0 0 16px ${data.color}15`,
+        background: dormant ? "#10141C" : `${data.color}12`,
+        border: `1px ${isSpawned ? "dashed" : "solid"} ${data.color}${dormant ? "33" : "66"}`,
+        opacity: dormant ? 0.4 : 1,
+        boxShadow: data.status === "active" ? `-2px 0 0 0 #FF7A3D` : "none",
       }}
     >
-      <Handle type="target" position={Position.Top} style={{ background: data.color, border: "none", width: 6, height: 6 }} />
+      <Handle type="target" position={Position.Top} style={{ background: data.color, border: "none", width: 5, height: 5 }} />
 
-      <div
-        className="text-[10px] font-semibold uppercase tracking-wider mb-1"
-        style={{ color: data.color }}
-      >
-        {formatRole(data.role)}
+      <div className="mb-1 flex items-center justify-center gap-1.5">
+        <span
+          className="grid h-4 w-4 place-items-center rounded-sm font-mono text-[0.56rem] font-semibold"
+          style={{ color: data.color, backgroundColor: `${data.color}1e`, border: `1px solid ${data.color}44` }}
+        >
+          {ROLE_SIGIL[data.role]}
+        </span>
+        <span className="font-mono text-[0.58rem] uppercase tracking-wide" style={{ color: data.color }}>
+          {formatRole(data.role)}
+        </span>
       </div>
 
-      <div className="text-xs font-medium text-white/80 leading-tight truncate max-w-[130px] mx-auto">
+      {/* the graph canvas is always a dark blueprint, so node text is fixed light */}
+      <div
+        className="mx-auto max-w-[150px] truncate font-serif text-[0.8rem] font-medium leading-tight"
+        style={{ color: "rgba(236,227,210,0.9)" }}
+      >
         {data.label}
       </div>
 
       {isSpawned && (
-        <div className="mt-1.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/5 text-[9px] text-white/30">
-          <span className="w-1 h-1 rounded-full bg-white/30" />
-          AI Spawned
+        <div
+          className="mt-1 font-mono text-[0.56rem] uppercase tracking-wide"
+          style={{ color: "rgba(236,227,210,0.32)" }}
+        >
+          spawned
         </div>
       )}
 
-      {data.status === "active" && (
-        <span
-          className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-background"
-          style={{ background: data.color }}
-        />
-      )}
-
-      <Handle type="source" position={Position.Bottom} style={{ background: data.color, border: "none", width: 6, height: 6 }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: data.color, border: "none", width: 5, height: 5 }} />
     </div>
   )
 }
@@ -127,6 +151,7 @@ export function AgentGraph() {
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([])
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([])
   const instanceRef = useRef<ReactFlowInstance | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const positions = buildLayout(graph.nodes)
@@ -140,78 +165,82 @@ export function AgentGraph() {
         role: n.role,
         status: n.status,
         is_predefined: n.is_predefined,
-        color: ROLE_HEX[n.role] ?? "#94a3b8",
+        color: ROLE_HEX[n.role] ?? "#8A8578",
       },
     }))
 
+    // Descent is carried by the line itself; reasons repeat across a fan-out and
+    // only add noise, so no edge labels.
     const edges: Edge[] = graph.edges.map((e, i) => ({
       id: `e-${i}`,
       source: e.source,
       target: e.target,
-      label: e.reason ? e.reason.slice(0, 28) + (e.reason.length > 28 ? "…" : "") : undefined,
-      labelStyle: { fontSize: 9, fill: "#64748b", fontFamily: "inherit" },
-      labelBgStyle: { fill: "#0f172a", fillOpacity: 0.8 },
-      labelBgPadding: [4, 2],
-      style: { stroke: "#334155", strokeDasharray: "5 3", strokeWidth: 1.5 },
-      animated: true,
-      markerEnd: { type: MarkerType.ArrowClosed, color: "#475569", width: 12, height: 12 },
+      style: { stroke: "#3A4250", strokeDasharray: "4 3", strokeWidth: 1 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#5A6270", width: 11, height: 11 },
     }))
 
     setRfNodes(nodes)
     setRfEdges(edges)
-    // Re-fit after the DOM paints the new node set.
-    requestAnimationFrame(() => {
-      instanceRef.current?.fitView({ padding: 0.25, duration: 300 })
-    })
+    // Re-fit once the new node set has painted (double rAF is enough for layout).
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => instanceRef.current?.fitView({ padding: 0.24, duration: 300 }))
+    )
   }, [graph, setRfNodes, setRfEdges])
 
   const onInit = useCallback((instance: ReactFlowInstance) => {
     instanceRef.current = instance
-    setTimeout(() => instance.fitView({ padding: 0.25 }), 50)
+    instance.fitView({ padding: 0.24 })
+  }, [])
+
+  // keep the graph fitted when the pane resizes (tab switch, window, sidebar)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      instanceRef.current?.fitView({ padding: 0.24, duration: 200 })
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
   }, [])
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="px-4 py-2.5 border-b border-white/8 flex-shrink-0">
-        <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">
-          Agent Graph
+    <div className="flex h-full min-h-0 w-full flex-col">
+      <div className="flex-shrink-0 border-b border-hairline px-4 py-2.5">
+        <p className="font-mono text-[0.66rem] uppercase tracking-[0.2em] text-foreground/35">
+          The spawn graph
           {graph.nodes.length > 0 && (
-            <span className="ml-2 text-white/20 normal-case font-normal">
-              {graph.nodes.length} agents · {graph.edges.length} connections
+            <span className="ml-2 tabular normal-case tracking-normal text-foreground/40">
+              {graph.nodes.length} agents, {graph.edges.length} lines of descent
             </span>
           )}
         </p>
       </div>
-      <div className="flex-1 min-h-0">
+      <div ref={wrapRef} className="relative min-h-0 flex-1">
         <ReactFlow
+          className="absolute inset-0"
           nodes={rfNodes}
           edges={rfEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={nodeTypes}
           fitView
-          fitViewOptions={{ padding: 0.3 }}
+          fitViewOptions={{ padding: 0.24 }}
+          minZoom={0.15}
           nodesDraggable
           nodesConnectable={false}
+          proOptions={{ hideAttribution: true }}
           onInit={onInit}
           style={{ background: "transparent" }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
-          <Controls
-            showInteractive={false}
-            style={{
-              background: "rgba(15,23,42,0.8)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8,
-            }}
-          />
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#1B222E" />
+          <Controls showInteractive={false} />
           <MiniMap
-            nodeColor={(node) => (node.data as AgentNodeData).color + "80"}
-            maskColor="rgba(10,15,26,0.85)"
+            nodeColor={(node) => (node.data as AgentNodeData).color + "88"}
+            maskColor="rgba(11,14,20,0.86)"
             style={{
-              background: "rgba(10,15,26,0.9)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 8,
+              background: "rgba(16,20,28,0.92)",
+              border: "1px solid rgba(236,227,210,0.16)",
+              borderRadius: 3,
             }}
           />
         </ReactFlow>

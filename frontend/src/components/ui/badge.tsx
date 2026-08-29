@@ -2,19 +2,21 @@ import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
+/* Docket tags: small, sharp, hairline-bordered. Not pills. */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[0.68rem] font-medium uppercase tracking-wide transition-colors",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
-        destructive: "border-transparent bg-red-500/20 text-red-400 border-red-500/30",
-        outline: "text-foreground border-border",
-        success: "border-transparent bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-        warning: "border-transparent bg-amber-500/20 text-amber-400 border-amber-500/30",
-        info: "border-transparent bg-blue-500/20 text-blue-400 border-blue-500/30",
-        muted: "border-transparent bg-muted text-muted-foreground",
+        default: "border-brass/25 bg-brass/10 text-brass-text",
+        secondary: "border-border bg-secondary text-secondary-foreground",
+        destructive: "border-oxblood-bright/30 bg-oxblood-bright/12 text-oxblood-bright",
+        outline: "border-border text-muted-foreground",
+        success: "border-role-witness/30 bg-role-witness/12 text-role-witness",
+        warning: "border-brass/30 bg-brass/12 text-brass-text",
+        info: "border-role-defense/30 bg-role-defense/12 text-role-defense",
+        live: "border-ember/40 bg-ember/12 text-ember",
+        muted: "border-border bg-muted text-muted-foreground",
       },
     },
     defaultVariants: {

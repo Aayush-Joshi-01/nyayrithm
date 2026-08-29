@@ -2,99 +2,124 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Edit3, Check, X } from "lucide-react";
+import { Pencil, Check, X } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { simulationsApi } from "@/lib/api";
-import { ROLE_COLORS, ROLE_HEX, formatRole, cn } from "@/lib/utils";
+import { roleStyle, roleVar, ROLE_SIGIL, formatRole, cn } from "@/lib/utils";
 import { CitationChip } from "../shared/CitationChip";
 import type { AgentRole, Turn } from "@/types/api";
 
-function TurnBubble({ turn, simId, agentName, role }: {
+/* Provenance for a turn: a cited claim carries at least one citation; a
+   human-overridden turn is disputed; everything else is inference on the
+   record but not yet tied to a passage. (raise: challenger-provenance-ribbon) */
+function turnProv(turn: Turn): "cited" | "inferred" | "disputed" {
+  if (turn.is_human_override) return "disputed";
+  if ((turn.citations?.length ?? 0) > 0) return "cited";
+  return "inferred";
+}
+
+function TurnLine({ turn, simId, agentName, role, latest }: {
   turn: Turn;
   simId: string;
   agentName: string;
   role: AgentRole;
+  latest: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [editContent, setEditContent] = useState(turn.content_edited ?? turn.content);
+  const [draft, setDraft] = useState(turn.content_edited ?? turn.content);
   const qc = useQueryClient();
+  const prov = turnProv(turn);
 
   const editMutation = useMutation({
     mutationFn: (content: string) => simulationsApi.editTurn(simId, turn.id, content),
     onSuccess: () => { setEditing(false); qc.invalidateQueries({ queryKey: ["turns", simId] }); },
   });
 
-  const displayContent = turn.content_edited ?? turn.content;
+  const content = turn.content_edited ?? turn.content;
 
   return (
-    <div className="group px-4 py-3 hover:bg-accent/10 transition-colors">
-      <div className="flex items-start gap-3 max-w-4xl">
-        {/* Role avatar */}
-        <div
-          className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
-          style={{ backgroundColor: `${ROLE_HEX[role]}20`, color: ROLE_HEX[role], border: `1px solid ${ROLE_HEX[role]}40` }}
-        >
-          {agentName[0]?.toUpperCase()}
-        </div>
+    <div
+      className={cn(
+        "group record-line px-4 py-3.5 hairline-b transition-colors hover:bg-accent/20",
+        latest ? "struck" : "afterglow"
+      )}
+    >
+      <div className="lineno">{turn.turn_number}</div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-semibold text-foreground">{agentName}</span>
-            <span className={cn("text-xs px-1.5 py-0.5 rounded border", ROLE_COLORS[role])}>
-              {formatRole(role)}
-            </span>
-            {turn.is_human_override && (
-              <span className="text-xs text-violet-400 bg-violet-400/10 px-1.5 py-0.5 rounded">edited</span>
-            )}
-            <span className="text-xs text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-              Turn {turn.turn_number} · {turn.latency_ms}ms
-            </span>
-          </div>
-
-          {editing ? (
-            <div className="space-y-2">
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                rows={6}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none"
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={() => editMutation.mutate(editContent)}
-                  disabled={editMutation.isPending}
-                  className="flex items-center gap-1 px-3 py-1 bg-amber-500 text-black rounded text-xs font-medium"
-                >
-                  <Check className="w-3 h-3" /> Save
-                </button>
-                <button
-                  onClick={() => setEditing(false)}
-                  className="flex items-center gap-1 px-3 py-1 border border-border rounded text-xs text-muted-foreground"
-                >
-                  <X className="w-3 h-3" /> Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">{displayContent}</p>
-              {(turn.citations?.length ?? 0) > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {turn.citations.map((c, i) => <CitationChip key={i} citation={c} />)}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {!editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 text-muted-foreground hover:text-foreground"
-            title="Edit statement"
+      <div className="custody-line min-w-0" data-prov={prov}>
+        <div className="mb-1.5 flex items-center gap-2">
+          <span
+            className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-sm border font-mono text-[0.62rem] font-semibold"
+            style={roleStyle(role)}
           >
-            <Edit3 className="w-3.5 h-3.5" />
-          </button>
+            {ROLE_SIGIL[role]}
+          </span>
+          <span className="font-serif text-[0.92rem] font-medium text-foreground">{agentName}</span>
+          <span
+            className="rounded-sm border px-1 py-px font-mono text-[0.6rem] uppercase tracking-wide"
+            style={{ color: roleVar(role), borderColor: `color-mix(in srgb, ${roleVar(role)} 30%, transparent)` }}
+          >
+            {formatRole(role)}
+          </span>
+          {turn.is_human_override && (
+            <span className="rounded-sm bg-oxblood-bright/12 px-1 py-px font-mono text-[0.58rem] uppercase tracking-wide text-oxblood-bright">
+              overridden
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-2 font-mono text-[0.62rem] text-foreground/30 opacity-0 transition-opacity group-hover:opacity-100">
+            <span
+              className={
+                prov === "cited" ? "text-brass-text" : prov === "disputed" ? "text-oxblood-bright" : "text-foreground/45"
+              }
+            >
+              {prov}
+            </span>
+            <span className="tabular">{turn.latency_ms}ms</span>
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-foreground/40 hover:text-foreground"
+                title="Enter an override"
+              >
+                <Pencil className="h-3 w-3" strokeWidth={1.75} />
+              </button>
+            )}
+          </span>
+        </div>
+
+        {editing ? (
+          <div className="space-y-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              rows={6}
+              className="w-full resize-none rounded-sm border border-border bg-ink-raised px-3 py-2 text-sm leading-relaxed focus:border-brass focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => editMutation.mutate(draft)}
+                disabled={editMutation.isPending}
+                className="inline-flex items-center gap-1 rounded-sm bg-brass px-3 py-1 text-xs font-semibold text-primary-foreground"
+              >
+                <Check className="h-3 w-3" strokeWidth={2.5} /> Enter override
+              </button>
+              <button
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1 rounded-sm border border-border px-3 py-1 text-xs text-foreground/55"
+              >
+                <X className="h-3 w-3" strokeWidth={2} /> Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="whitespace-pre-wrap text-[0.9rem] leading-relaxed text-foreground/85">{content}</p>
+            {(turn.citations?.length ?? 0) > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {turn.citations.map((c, i) => <CitationChip key={i} citation={c} />)}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -114,46 +139,46 @@ export function TurnFeed({ simId }: { simId: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {turns.length === 0 && !streaming && (
-        <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-          Start the simulation to begin proceedings
+        <div className="flex h-full flex-col items-center justify-center px-8 text-center">
+          <p className="font-serif text-[1.05rem] text-foreground/55">Nothing is on the record yet.</p>
+          <p className="mt-2 max-w-xs text-[0.85rem] leading-relaxed text-foreground/40">
+            When the proceeding is called to order, each turn is entered here with
+            its citations and its standing in the margin.
+          </p>
         </div>
       )}
 
-      {turns.map((turn) => {
+      {turns.map((turn, i) => {
         const agent = agentMap.get(turn.agent_id);
         return (
-          <TurnBubble
+          <TurnLine
             key={turn.id}
             turn={turn}
             simId={simId}
-            agentName={agent?.name ?? "Unknown Agent"}
+            agentName={agent?.name ?? "Unknown agent"}
             role={(agent?.role ?? "custom") as AgentRole}
+            latest={i === turns.length - 1 && !streaming}
           />
         );
       })}
 
-      {/* Streaming turn */}
       {streaming && (
-        <div className="px-4 py-3 bg-accent/5">
-          <div className="flex items-start gap-3 max-w-4xl">
-            <div
-              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
-              style={{ backgroundColor: `${ROLE_HEX[streaming.role as AgentRole] ?? "#94a3b8"}20`, color: ROLE_HEX[streaming.role as AgentRole] ?? "#94a3b8" }}
-            >
-              {streaming.agentName[0]?.toUpperCase()}
+        <div className="record-line struck px-4 py-3.5">
+          <div className="lineno">{turns.length + 1}</div>
+          <div className="custody-line arrive min-w-0" data-prov="inferred">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span
+                className="grid h-5 w-5 flex-shrink-0 place-items-center rounded-sm border font-mono text-[0.62rem] font-semibold"
+                style={roleStyle((streaming.role as AgentRole) ?? "custom")}
+              >
+                {ROLE_SIGIL[(streaming.role as AgentRole) ?? "custom"]}
+              </span>
+              <span className="font-serif text-[0.92rem] font-medium text-foreground">{streaming.agentName}</span>
+              <span className="font-mono text-[0.6rem] uppercase tracking-wide text-ember-text">speaking</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-semibold">{streaming.agentName}</span>
-                <span className={cn("text-xs px-1.5 py-0.5 rounded border", ROLE_COLORS[streaming.role as AgentRole] ?? "text-slate-400")}>
-                  {formatRole(streaming.role as AgentRole)}
-                </span>
-                <span className="text-xs text-muted-foreground animate-pulse">typing...</span>
-              </div>
-              <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap streaming-cursor">
-                {streaming.content}
-              </p>
-            </div>
+            <p className="streaming-cursor whitespace-pre-wrap text-[0.9rem] leading-relaxed text-foreground/85">
+              {streaming.content}
+            </p>
           </div>
         </div>
       )}

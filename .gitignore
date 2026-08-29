@@ -363,3 +363,10 @@ vite.config.ts.timestamp-*
 # Claude Code — local only
 CLAUDE.md
 .claude/
+
+.github/agents/*
+.github/hooks/*
+.github/skills/*
+PRODUCT.md
+.impeccable/*
+DESIGN.md

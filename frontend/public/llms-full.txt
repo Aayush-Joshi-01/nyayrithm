@@ -1,0 +1,67 @@
+# Nyayrithm: full reference
+
+> Nyayrithm ("nyay" = justice, "rithm" from algorithm) runs a graph of AI agents that argue a legal case from the evidence you give it. Each agent plays a distinct legal role with its own knowledge scope and model. Every claim is tied to the exact source passage it came from. Self-hostable, provider-agnostic, and runnable fully offline.
+
+## Audience and use
+
+- Litigators preparing real cases: stress-test a theory of the case, anticipate cross-examination, rehearse how a proceeding might unfold before trial or deposition.
+- Legal researchers and legal-tech builders: study AI legal reasoning and multi-agent argumentation, or build on the swappable abstraction layer.
+- Modes: courtroom, deposition, strategy session.
+
+## The roles ("the bench")
+
+- Judge: runs the proceeding, rules on objections, delivers the verdict. Sees the whole record.
+- Prosecutor: puts the state's case, cross-examines the defense. Sees prosecution evidence.
+- Defense: advocates for the accused, challenges admissibility. Sees defense evidence.
+- Plaintiff: brings the civil claim, testifies to the harm. Sees its own filings.
+- Accused: answers the charges, testifies under oath. Sees the charges and its own statements.
+- Witness: gives testimony bounded to its knowledge window. Sees one linked exhibit.
+- Investigator: presents forensic findings and chain of custody. Sees the investigation file.
+- Expert witness: a domain specialist spawned mid-proceeding when a technical question opens. Sees the matter it was called for.
+- Custom: user-defined role.
+
+Agents are either predefined by the user before the proceeding, or AI-spawned at runtime by the orchestrator (AgentGraph / AgentOrchestrator).
+
+## Evidence and retrieval
+
+- Evidence types: PDF, DOCX, audio (transcribed), video (frames plus transcript), images.
+- Lifecycle: pending -> processing -> indexed or error.
+- Pipeline: EvidenceIngester (type-matched) -> TextChunker / TimeWindowChunker -> Embedder -> VectorStore.
+- Retrieval is role-scoped at query time. An agent cannot cite what its role was never permitted to see.
+- Citations use inline markers ([EVIDENCE:uuid:chunk_index]) resolved to a document passage, audio timestamp, or video frame.
+- Each turn is marked cited (tied to an openable passage), inferred (on the record, not yet accepted), or disputed (contested).
+
+## Running it
+
+- Zero-cloud path: a free Google Gemini key plus SQLite, Chroma, and sentence-transformers embeddings, or a local Ollama model, is a complete stack with no external calls.
+- Every service choice is one environment variable: DB_BACKEND, VECTOR_DB_BACKEND, STORAGE_BACKEND, EMBEDDER_BACKEND, LLM_DEFAULT_PROVIDER.
+- Providers: OpenAI, Anthropic, Google Gemini, Ollama. Databases: PostgreSQL, MongoDB, SQLite, DynamoDB. Vector stores: Qdrant, Chroma, Pinecone, pgvector. Storage: local, S3, MinIO, GCS, Azure Blob.
+- Stack: FastAPI + Python backend, Next.js 15 frontend, models as plain Python dataclasses behind a Repository[T] protocol (no ORM). Auth via Keycloak.
+- The proceeding streams to the browser over WebSocket: turn.started, turn.token, turn.completed, agent.spawned, conflict.detected, simulation.paused, simulation.completed.
+- Any turn can be overridden with human text; the override is marked on the record.
+
+## FAQ
+
+Q: Is this a real simulation or a single chatbot with personas?
+A: Each role is a separate agent with its own knowledge scope, constraints, and model. They take turns, object, cross-examine, and cite evidence independently, and the orchestrator can spawn a specialist mid-proceeding. It is a graph of agents, not one model role-playing.
+
+Q: Can I trust the citations?
+A: Every agent argues from evidence you attach. Retrieval is scoped by role. Claims carry inline markers that resolve to the exact passage, timestamp, or frame, and each turn is labelled cited, inferred, or disputed.
+
+Q: Which models does it use?
+A: Each role has a default provider and model, overridable per agent. OpenAI, Anthropic, Google Gemini, and local models via Ollama. A single free provider can carry an entire proceeding.
+
+Q: Can it run offline or on my own infrastructure?
+A: Yes. Self-hostable and provider-agnostic. A full proceeding runs on a laptop with SQLite, a local vector store, sentence-transformers, and a local Ollama model, with no external calls.
+
+Q: Can I edit what an agent says?
+A: Yes. Any turn can be overridden; the override is marked and the proceeding continues from it.
+
+## Status
+
+Open source. No account is required to run it locally. Pre-launch: there are no customers, testimonials, pilots, or benchmarks to cite.
+
+## Links
+
+- Home: https://nyayrithm.aayushjoshi.dev/
+- Documentation: https://nyayrithm.aayushjoshi.dev/docs
