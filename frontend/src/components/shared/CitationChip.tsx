@@ -33,7 +33,7 @@ export function CitationChip({ citation }: { citation: Citation }) {
       {open && (
         <>
           <span className="fixed inset-0 z-30 block" onClick={() => setOpen(false)} />
-          <span className="absolute bottom-full left-0 z-40 mb-2 block w-72 rounded-sm border border-border bg-popover p-3 shadow-chamber">
+          <span className="absolute bottom-full left-0 z-40 mb-2 block w-72 origin-bottom-left rounded-sm border border-border bg-popover p-3 shadow-chamber animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-1 duration-150 ease-[cubic-bezier(0.16,1,0.3,1)]">
             <span className="mb-1.5 flex items-center gap-1.5 font-serif text-[0.82rem] font-medium text-foreground">
               <Icon className="h-3.5 w-3.5 text-brass-text" strokeWidth={1.75} />
               {citation.evidence_title ?? "Evidence"}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { motion, useReducedMotion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn, roleStyle, ROLE_SIGIL } from "@/lib/utils"
 import type { AgentRole } from "@/types/api"
 
@@ -109,12 +109,14 @@ export function LiveRecord() {
           {SCRIPT.slice(0, shown).map((line, i) => {
             const isNewest = i === shown - 1
             return (
-              <motion.div
+              <div
                 key={line.n}
-                initial={reduce ? false : { opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                className={cn("record-line py-2.5", i > 0 && "hairline-t", isNewest ? "struck" : "afterglow")}
+                className={cn(
+                  "record-line py-2.5",
+                  i > 0 && "hairline-t",
+                  isNewest ? "struck" : "afterglow",
+                  isNewest && !reduce && "rec-enter",
+                )}
                 data-prov={line.prov}
               >
                 <div className="lineno">{line.n}</div>
@@ -135,14 +137,14 @@ export function LiveRecord() {
                   </div>
                   <p
                     className={cn(
-                      "text-[0.86rem] leading-relaxed text-foreground/85",
+                      "rec-body text-[0.86rem] leading-relaxed text-foreground/85",
                       isNewest && streaming && "streaming-cursor"
                     )}
                   >
                     {line.text}
                   </p>
                 </div>
-              </motion.div>
+              </div>
             )
           })}
         </div>

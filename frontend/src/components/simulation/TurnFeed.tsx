@@ -41,7 +41,7 @@ function TurnLine({ turn, simId, agentName, role, latest }: {
     <div
       className={cn(
         "group record-line px-4 py-3.5 hairline-b transition-colors hover:bg-accent/20",
-        latest ? "struck" : "afterglow"
+        latest ? "struck rec-enter" : "afterglow"
       )}
     >
       <div className="lineno">{turn.turn_number}</div>
@@ -62,7 +62,7 @@ function TurnLine({ turn, simId, agentName, role, latest }: {
             {formatRole(role)}
           </span>
           {turn.is_human_override && (
-            <span className="rounded-sm bg-oxblood-bright/12 px-1 py-px font-mono text-[0.58rem] uppercase tracking-wide text-oxblood-bright">
+            <span className="rounded-sm bg-oxblood-bright/12 px-1 py-px font-mono text-[0.58rem] uppercase tracking-wide text-oxblood-bright animate-in fade-in-0 slide-in-from-left-1 duration-200">
               overridden
             </span>
           )}
@@ -113,7 +113,7 @@ function TurnLine({ turn, simId, agentName, role, latest }: {
           </div>
         ) : (
           <>
-            <p className="whitespace-pre-wrap text-[0.9rem] leading-relaxed text-foreground/85">{content}</p>
+            <p className="rec-body whitespace-pre-wrap text-[0.9rem] leading-relaxed text-foreground/85">{content}</p>
             {(turn.citations?.length ?? 0) > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {turn.citations.map((c, i) => <CitationChip key={i} citation={c} />)}

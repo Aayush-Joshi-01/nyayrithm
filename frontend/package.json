@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -30,7 +30,6 @@
     "clsx": "^2.1.1",
     "cobe": "^2.0.1",
     "date-fns": "^4.1.0",
-    "framer-motion": "^11.11.0",
     "keycloak-js": "^26.2.4",
     "ky": "^1.7.2",
     "lucide-react": "^0.462.0",

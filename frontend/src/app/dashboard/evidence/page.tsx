@@ -42,7 +42,7 @@ export default function EvidencePage() {
       {casesLoading && (
         <div className="space-y-2">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-lg border border-hairline bg-bone/[0.04]" />
+            <div key={i} className="skeleton-shimmer h-24 rounded-lg border border-hairline bg-bone/[0.04]" />
           ))}
         </div>
       )}

@@ -19,13 +19,14 @@ const LEGAL_SYSTEM_LABELS: Record<string, string> = {
   hybrid: "Hybrid",
 }
 
-export function CaseCard({ case_ }: { case_: Case }) {
+export function CaseCard({ case_, stagger = 0 }: { case_: Case; stagger?: number }) {
   const statusCfg = STATUS_CONFIG[case_.status] ?? { label: case_.status, variant: "outline" as const }
 
   return (
     <Link
       href={`/dashboard/${case_.id}`}
-      className="group flex h-full flex-col rounded-lg border border-border bg-ink-raised p-5 transition-colors hover:border-brass/35"
+      style={{ "--stagger": stagger } as React.CSSProperties}
+      className="stagger-item group flex h-full flex-col rounded-lg border border-border bg-ink-raised p-5 transition-[border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-brass/35"
     >
       <div className="flex items-center justify-between">
         <Badge variant={statusCfg.variant}>{statusCfg.label}</Badge>

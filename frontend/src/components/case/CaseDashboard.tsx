@@ -87,8 +87,8 @@ export function CaseDashboard() {
           </div>
         ) : filtered.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((c) => (
-              <CaseCard key={c.id} case_={c} />
+            {filtered.map((c, i) => (
+              <CaseCard key={c.id} case_={c} stagger={Math.min(i, 7)} />
             ))}
           </div>
         ) : search ? (

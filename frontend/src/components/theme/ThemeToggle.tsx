@@ -63,13 +63,22 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
           ? `Switch to ${theme === "dark" ? "the court in session (light)" : "the court after hours (dark)"}`
           : "Switch theme"
       }
-      className={`grid h-8 w-8 place-items-center rounded-sm text-foreground/55 transition-colors hover:text-foreground hover:bg-accent/60 ${className}`}
+      className={`relative grid h-8 w-8 place-items-center overflow-hidden rounded-sm text-foreground/55 transition-colors hover:bg-accent/60 hover:text-foreground ${className}`}
     >
-      {mounted && theme === "dark" ? (
-        <Sun className="h-4 w-4" strokeWidth={1.75} />
-      ) : (
-        <Moon className="h-4 w-4" strokeWidth={1.75} />
-      )}
+      <Sun
+        className={`col-start-1 row-start-1 h-4 w-4 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          mounted && theme === "dark" ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-50 opacity-0"
+        }`}
+        strokeWidth={1.75}
+        style={{ gridArea: "1 / 1" }}
+      />
+      <Moon
+        className={`col-start-1 row-start-1 h-4 w-4 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          mounted && theme === "dark" ? "rotate-90 scale-50 opacity-0" : "rotate-0 scale-100 opacity-100"
+        }`}
+        strokeWidth={1.75}
+        style={{ gridArea: "1 / 1" }}
+      />
     </button>
   )
 }
