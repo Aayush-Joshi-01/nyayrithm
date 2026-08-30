@@ -1,3 +1,9 @@
+---
+title: Windows setup
+nav_order: 2
+permalink: /setup/windows/
+---
+
 # Windows Setup Guide
 
 Step-by-step instructions for running Nyayrithm on Windows 10 (21H2+) or Windows 11.
@@ -8,9 +14,9 @@ Default LLM: **Gemini 2.5 Flash** (free tier, no credit card required).
 ## Contents
 
 - [Prerequisites](#prerequisites)
-- [Option A — Docker Desktop (recommended)](#option-a--docker-desktop-recommended)
-- [Option B — Native (no Docker)](#option-b--native-no-docker)
-- [Option C — Fully offline with Ollama](#option-c--fully-offline-with-ollama)
+- [Option A: Docker Desktop (recommended)](#option-a--docker-desktop-recommended)
+- [Option B: Native (no Docker)](#option-b--native-no-docker)
+- [Option C: Fully offline with Ollama](#option-c--fully-offline-with-ollama)
 - [Configuring LLM providers](#configuring-llm-providers)
 - [Verify the installation](#verify-the-installation)
 - [Windows-specific tips](#windows-specific-tips)
@@ -53,14 +59,14 @@ git --version
 
 ---
 
-## Option A — Docker Desktop (recommended)
+## Option A: Docker Desktop (recommended)
 
 The cleanest Windows setup. All services run in containers.
 
-### Step 1 — Install Docker Desktop
+### Step 1: Install Docker Desktop
 
 1. Download from https://www.docker.com/products/docker-desktop/
-2. Run the installer — ensure **"Use WSL2 instead of Hyper-V"** is checked
+2. Run the installer, ensure **"Use WSL2 instead of Hyper-V"** is checked
 3. Start Docker Desktop and wait for the green "Engine running" indicator
 4. In Docker Desktop → Settings → Resources → WSL Integration → enable your Ubuntu distro
 
@@ -72,7 +78,7 @@ docker compose version
 # Docker Compose version v2.30+
 ```
 
-### Step 2 — Install Node.js 24 LTS
+### Step 2: Install Node.js 24 LTS
 
 Download the Windows installer from https://nodejs.org (choose **24 LTS**)  
 Or use `winget`:
@@ -86,7 +92,7 @@ node --version   # v24.x.x
 npm --version    # 10+
 ```
 
-### Step 3 — Install Bun
+### Step 3: Install Bun
 
 Bun is the JavaScript runtime and package manager used by Nyayrithm (replaces pnpm/npm).
 
@@ -99,7 +105,7 @@ Close and reopen your terminal, then verify:
 bun --version   # 1.x.x
 ```
 
-### Step 4 — Clone and configure
+### Step 4: Clone and configure
 
 ```powershell
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
@@ -112,16 +118,16 @@ copy .env.example .env
 Open `.env` in your editor (VS Code, Notepad++, etc.) and set at minimum:
 
 ```env
-# ── Gemini (free tier — default) ─────────────────────────
+# ── Gemini (free tier, default) ─────────────────────────
 LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...your-key...   # https://aistudio.google.com/app/apikey
 
 # Leave all other defaults as-is for Docker setup
 ```
 
-> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key** — no credit card required.
+> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key**: no credit card required.
 
-### Step 5 — Start the stack
+### Step 5: Start the stack
 
 ```powershell
 # From the nyayrithm\ directory:
@@ -143,14 +149,14 @@ docker compose exec backend uv run alembic upgrade head
 
 > **Keycloak first-start:** Allow ~30 seconds after `docker compose up` for Keycloak to import the `nyayrithm` realm. The frontend login/register won't work until this completes.
 
-### Step 6 — Install frontend dependencies (first time only)
+### Step 6: Install frontend dependencies (first time only)
 
 ```powershell
 cd frontend
 bun install
 ```
 
-The Next.js dev server runs inside the `frontend` Docker container — `bun install` is only needed if you want to run it natively outside Docker.
+The Next.js dev server runs inside the `frontend` Docker container, `bun install` is only needed if you want to run it natively outside Docker.
 
 ### Stopping and restarting
 
@@ -163,13 +169,13 @@ docker compose up --build -d # rebuild images + restart
 
 ---
 
-## Option B — Native (no Docker)
+## Option B: Native (no Docker)
 
 Runs everything directly on Windows + WSL2 (Redis in WSL2, app code on Windows).
 
-### Step 1 — Install Python 3.13
+### Step 1: Install Python 3.13
 
-Download from https://www.python.org/downloads/windows/ — choose **Python 3.13.x (64-bit)**
+Download from https://www.python.org/downloads/windows/, choose **Python 3.13.x (64-bit)**
 
 During install:
 - ✅ Check **"Add python.exe to PATH"**
@@ -180,7 +186,7 @@ Verify in a new PowerShell window:
 python --version   # Python 3.13.x
 ```
 
-### Step 2 — Install uv
+### Step 2: Install uv
 
 `uv` is a fast Python package manager (replaces pip + virtualenv):
 
@@ -193,14 +199,14 @@ Close and reopen PowerShell, then verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + Bun
+### Step 3: Install Node.js 24 LTS + Bun
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 powershell -c "irm bun.sh/install.ps1 | iex"
 ```
 
-### Step 4 — Install Redis via WSL2
+### Step 4: Install Redis via WSL2
 
 Redis has no official native Windows build. Use WSL2 (Ubuntu):
 
@@ -218,16 +224,16 @@ Set Redis to start automatically:
 sudo systemctl enable redis-server
 ```
 
-Redis listens on `localhost:6379` — accessible from Windows apps because WSL2 bridges the network.
+Redis listens on `localhost:6379`, accessible from Windows apps because WSL2 bridges the network.
 
-### Step 5 — Install Chroma (optional — replaces Qdrant for simpler setup)
+### Step 5: Install Chroma (optional, replaces Qdrant for simpler setup)
 
-Chroma runs in-process inside the Python backend. No separate install needed — just set:
+Chroma runs in-process inside the Python backend. No separate install needed, just set:
 ```env
 VECTOR_DB_BACKEND=chroma
 ```
 
-### Step 6 — Clone and configure
+### Step 6: Clone and configure
 
 In PowerShell:
 ```powershell
@@ -270,65 +276,65 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
 
-### Step 7 — Install backend dependencies
+### Step 7: Install backend dependencies
 
 ```powershell
 cd backend
 uv pip install -e ".[dev]"
 ```
 
-### Step 8 — Install frontend dependencies
+### Step 8: Install frontend dependencies
 
 ```powershell
 cd ..\frontend
 bun install
 ```
 
-### Step 9 — Run (three terminals)
+### Step 9: Run (three terminals)
 
-**Terminal 1 — API server:**
+**Terminal 1, API server:**
 ```powershell
 cd backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-**Terminal 2 — Celery worker:**
+**Terminal 2, Celery worker:**
 ```powershell
 cd backend
 uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulation,default
 ```
 
-**Terminal 3 — Frontend:**
+**Terminal 3, Frontend:**
 ```powershell
 cd frontend
 bun dev
 ```
 
-> **Native dev + Keycloak:** Ensure `frontend\.env.local` exists with `KEYCLOAK_URL=http://localhost:8080`. The `make env` command (from Git Bash or WSL2) creates it automatically. You still need Keycloak running — start it with `docker compose up keycloak -d`.
+> **Native dev + Keycloak:** Ensure `frontend\.env.local` exists with `KEYCLOAK_URL=http://localhost:8080`. The `make env` command (from Git Bash or WSL2) creates it automatically. You still need Keycloak running, start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 
 ---
 
-## Option C — Fully offline with Ollama
+## Option C: Fully offline with Ollama
 
 No internet required after initial setup. Uses local LLMs via Ollama.
 
-### Step 1 — Install Ollama
+### Step 1: Install Ollama
 
 Download the Windows installer from https://ollama.com/download/windows  
-Run the installer — Ollama installs as a background service.
+Run the installer, Ollama installs as a background service.
 
 Verify:
 ```powershell
 ollama --version
 ```
 
-### Step 2 — Download models
+### Step 2: Download models
 
 ```powershell
-ollama pull llama3.1:8b       # ~4.7 GB — recommended all-rounder
-ollama pull mistral-nemo      # ~7.1 GB — good alternative
+ollama pull llama3.1:8b       # ~4.7 GB, recommended all-rounder
+ollama pull mistral-nemo      # ~7.1 GB, good alternative
 # For 70B (needs 64+ GB RAM):
 # ollama pull llama3.1:70b
 ```
@@ -340,7 +346,7 @@ Verify Ollama is running:
 ollama list    # lists downloaded models
 ```
 
-### Step 3 — Configure `.env` for offline use
+### Step 3: Configure `.env` for offline use
 
 ```env
 LLM_DEFAULT_PROVIDER=ollama
@@ -354,7 +360,7 @@ VECTOR_DB_BACKEND=chroma
 STORAGE_BACKEND=local
 ```
 
-Then follow Steps 7–9 from Option B.
+Then follow Steps 7-9 from Option B.
 
 ---
 
@@ -456,7 +462,7 @@ Expected `curl http://localhost:8000/health` response:
 
 ### Use Windows Terminal
 
-Install from the Microsoft Store — much better than the default console. Set Ubuntu (WSL2) as the default profile for Redis management.
+Install from the Microsoft Store, much better than the default console. Set Ubuntu (WSL2) as the default profile for Redis management.
 
 ### Path separator
 

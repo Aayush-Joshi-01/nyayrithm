@@ -1,3 +1,9 @@
+---
+title: LLM providers
+nav_order: 6
+permalink: /llm-providers/
+---
+
 # LLM Provider Configuration Guide
 
 Nyayrithm supports multiple LLM providers and lets you assign a different provider (and model) to each agent role. This document covers every supported provider, their free tiers, configuration, and recommended model assignments.
@@ -8,12 +14,12 @@ Nyayrithm supports multiple LLM providers and lets you assign a different provid
 
 Provider routing happens at two levels:
 
-**1. Global default** — set once in `.env`:
+**1. Global default**: set once in `.env`:
 ```env
 LLM_DEFAULT_PROVIDER=gemini
 ```
 
-**2. Per-role defaults** — edit `backend/app/llm/registry.py`:
+**2. Per-role defaults**: edit `backend/app/llm/registry.py`:
 ```python
 ROLE_PROVIDER_MAP = {
     "judge":          ("anthropic", "claude-opus-4-5"),
@@ -23,24 +29,25 @@ ROLE_PROVIDER_MAP = {
 }
 ```
 
-**3. Per-agent override** — when creating a simulation, set `llm_provider` and `llm_model` on any `AgentDefinition`. This takes precedence over both of the above.
+**3. Per-agent override**: when creating a simulation, set `llm_provider` and `llm_model` on any `AgentDefinition`. This takes precedence over both of the above.
 
 ---
 
-## Gemini — Google AI (free tier available)
+## Gemini: Google AI (free tier available)
 
 ### Free tier
 Google AI Studio provides a free tier with no credit card required:
 
-| Model | Free RPD | Notes |
-|-------|---------|-------|
-| Gemini 2.5 Flash | 1,500 | **Recommended** — best reasoning on free tier |
-| Gemini 2.5 Flash-Lite | 1,500 | Lightest model, most quota-efficient |
-| Gemini 2.5 Pro | 50 | Very limited free quota — use sparingly |
+| Model | Alias | Notes |
+|-------|-------|-------|
+| Flash-Lite | `gemini-flash-lite-latest` | **Default for every role**: lightest, most quota-efficient. This is what `registry.py` ships. |
+| Flash | `gemini-flash-latest` | More reasoning headroom; assign to `judge` / `expert_witness` if you have quota to spare |
+| Pro | `gemini-2.5-pro` | Strongest, but a very limited free quota, use sparingly |
 
-> ⚠️ **Gemini 2.0 Flash was deprecated and shut down June 1, 2026.** Migrate any existing configs to `gemini-flash-lite-latest` or `gemini-flash-lite-latest`.
+> The `*-latest` aliases always resolve to Google's current model in that tier, so
+> configs don't break when a specific version is retired.
 
-For most simulations (< 20 turns), **Gemini 2.5 Flash** on the free tier is sufficient.
+For most simulations (< 20 turns), the default **Flash-Lite** on the free tier is sufficient.
 
 ### Setup
 ```env
@@ -48,26 +55,22 @@ LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...          # from https://aistudio.google.com/app/apikey
 ```
 
-### Recommended role assignments (free tier)
+### Default role assignments (free tier)
+`registry.py` already assigns every role to Flash-Lite. Override only where you
+want more reasoning:
 ```python
 ROLE_PROVIDER_MAP = {
-    "judge":          ("gemini", "gemini-flash-lite-latest"),       # best free reasoning
-    "prosecutor":     ("gemini", "gemini-flash-lite-latest"),
-    "defense":        ("gemini", "gemini-flash-lite-latest"),
-    "plaintiff":      ("gemini", "gemini-flash-lite-latest"),  # lightest / most quota
-    "accused":        ("gemini", "gemini-flash-lite-latest"),
-    "witness":        ("gemini", "gemini-flash-lite-latest"),
-    "investigator":   ("gemini", "gemini-flash-lite-latest"),
-    "expert_witness": ("gemini", "gemini-flash-lite-latest"),
-    "custom":         ("gemini", "gemini-flash-lite-latest"),
+    "judge":          ("gemini", "gemini-flash-latest"),       # more headroom for rulings
+    "expert_witness": ("gemini", "gemini-flash-latest"),
+    # every other role falls back to ("gemini", "gemini-flash-lite-latest")
 }
 ```
 
 ### Notes
-- `gemini-2.5-pro` has only 50 RPD on the free tier — avoid assigning it to high-turn roles
+- `gemini-2.5-pro` has a very limited free quota: avoid assigning it to high-turn roles
 - Free tier responses may be slightly slower during peak hours
 - For production, upgrade to the paid tier (priced per million tokens, competitive with GPT-4o-mini)
-- Always check current quotas in [Google AI Studio](https://aistudio.google.com) — limits update automatically as your account tier changes
+- Always check current quotas in [Google AI Studio](https://aistudio.google.com): limits update automatically as your account tier changes
 
 ---
 
@@ -136,12 +139,12 @@ ROLE_PROVIDER_MAP = {
 ```
 
 ### Notes
-- Claude models are especially strong at nuanced instruction-following — good for role-constrained agents
+- Claude models are especially strong at nuanced instruction-following: good for role-constrained agents
 - `claude-opus-4-5` is the most expensive option but produces the most legally coherent Judge turns
 
 ---
 
-## Ollama — fully local, offline, free
+## Ollama: fully local, offline, free
 
 Run any open-weight model on your own hardware. No API key, no network calls, full data privacy. Ideal for sensitive legal matters or air-gapped deployments.
 
@@ -195,9 +198,9 @@ ROLE_PROVIDER_MAP = {
 ```
 
 ### Notes
-- Ollama streaming works the same as cloud providers — tokens are emitted incrementally
-- Response latency is hardware-dependent; 8B models typically run at 30–60 tokens/sec on a modern GPU
-- CPU-only inference is possible but slow (5–15 tokens/sec for 8B models)
+- Ollama streaming works the same as cloud providers: tokens are emitted incrementally
+- Response latency is hardware-dependent; 8B models typically run at 30-60 tokens/sec on a modern GPU
+- CPU-only inference is possible but slow (5-15 tokens/sec for 8B models)
 
 ---
 
@@ -211,7 +214,7 @@ LLM_DEFAULT_PROVIDER=cohere        # requires implementing CohereLLMProvider
 COHERE_API_KEY=...                  # from https://dashboard.cohere.com
 ```
 
-> Cohere LLM provider is not bundled by default. Implement `app/llm/cohere.py` following the `LLMProvider` protocol — see [`architecture.md`](architecture.md#add-a-new-llm-provider).
+> Cohere LLM provider is not bundled by default. Implement `app/llm/cohere.py` following the `LLMProvider` protocol, see [Architecture → Agent system]({{ '/architecture/' | relative_url }}#agent-system).
 
 ---
 
@@ -275,4 +278,4 @@ class LLMProvider(Protocol):
 
 The `stream()` method must yield raw token strings one at a time. The orchestrator passes these to `stream_callback` which broadcasts `turn.token` WebSocket events.
 
-To add a new provider, see [`architecture.md` → Extending the platform](architecture.md).
+To add a new provider, see [Architecture]({{ '/architecture/' | relative_url }}).

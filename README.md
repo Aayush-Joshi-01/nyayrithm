@@ -35,10 +35,12 @@ A graph of AI agents argues a real case from the evidence you give it. Each agen
 - [Contributing](#contributing) · [License](#license)
 
 ### Guides
-- [Windows setup](docs/setup-windows.md) — Docker Desktop, native + WSL2, or fully offline Ollama
-- [macOS setup](docs/setup-macos.md) — Docker Desktop, Homebrew native, or Apple Silicon Ollama
-- [Linux setup](docs/setup-linux.md) — Docker Compose, native, systemd services, GPU acceleration
-- [Architecture](docs/architecture.md) · [LLM providers](docs/llm-providers.md) · [Running locally](docs/running-locally.md) · [**Deployment & the two domains**](docs/deployment.md)
+Browse them rendered at **[aayush-joshi-01.github.io/nyayrithm](https://aayush-joshi-01.github.io/nyayrithm/)**, or in-repo:
+
+- [Windows setup](docs/pages/setup-windows.md) — Docker Desktop, native + WSL2, or fully offline Ollama
+- [macOS setup](docs/pages/setup-macos.md) — Docker Desktop, Homebrew native, or Apple Silicon Ollama
+- [Linux setup](docs/pages/setup-linux.md) — Docker Compose, native, systemd services, GPU acceleration
+- [Architecture](docs/pages/architecture.md) · [LLM providers](docs/pages/llm-providers.md) · [Running locally](docs/pages/running-locally.md) · [**Deployment & the two domains**](docs/pages/deployment.md)
 
 ---
 
@@ -86,7 +88,7 @@ A graph of AI agents argues a real case from the evidence you give it. Each agen
     SQLite            Pinecone       workers
 ```
 
-Extended architecture notes: [`docs/architecture.md`](docs/architecture.md)
+Extended architecture notes: [`docs/pages/architecture.md`](docs/pages/architecture.md)
 
 ---
 
@@ -263,7 +265,7 @@ GEMINI_API_KEY=AIza...
 ```
 
 Default model: `gemini-flash-lite-latest` (an alias that always resolves to Google's newest flash-lite). For heavier reasoning use `gemini-flash-latest`. The Gemini provider retries `429`/`5xx` with exponential backoff (honouring the server's `retryDelay`), and `SIMULATION_TURN_DELAY_SECONDS` paces the turn loop under the free-tier request-per-minute limit.
-See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/llm-providers.md`](docs/llm-providers.md).
+See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/pages/llm-providers.md`](docs/pages/llm-providers.md).
 
 ### Ollama — fully local, offline
 
@@ -586,7 +588,7 @@ NEXT_PUBLIC_APP_URL=https://nyayrithm.ai.aayushjoshi.dev
 
 Leave both unset locally and links stay same-origin. The backend deploys via the manual **Deploy Backend** GitHub Action to AWS ECS (or any runner of the `backend/` image); `infra/terraform/` provisions the AWS side.
 
-Full guide, including the single-vs-split deployment models, Keycloak redirect URIs, CORS, and DNS: [**`docs/deployment.md`**](docs/deployment.md).
+Full guide, including the single-vs-split deployment models, Keycloak redirect URIs, CORS, and DNS: [**`docs/pages/deployment.md`**](docs/pages/deployment.md).
 
 ---
 
@@ -658,12 +660,16 @@ nyayrithm/
 │   ├── keycloak/
 │   │   └── realm-export.json    Keycloak realm auto-imported on first start
 │   └── terraform/           Conditional AWS modules (VPC, RDS, ECS, S3, ElastiCache, …)
-├── docs/
-│   ├── architecture.md      System design decisions + data flow diagrams
-│   ├── llm-providers.md     Full provider configuration guide
-│   ├── running-locally.md   Step-by-step local dev without Docker
-│   └── deployment.md        The two-domain production topology
-├── .github/workflows/       CI (lint, test, docker build), manual backend deploy
+├── docs/                    GitHub Pages site (Jekyll + just-the-docs)
+│   ├── _config.yml          Pages config — served at aayush-joshi-01.github.io/nyayrithm
+│   ├── index.md             Docs home
+│   └── pages/
+│       ├── architecture.md      System design decisions + data flow diagrams
+│       ├── llm-providers.md     Full provider configuration guide
+│       ├── running-locally.md   Step-by-step local dev without Docker
+│       ├── setup-*.md           Per-OS setup guides
+│       └── deployment.md        The two-domain production topology
+├── .github/workflows/       CI (lint, test, docker build), Pages deploy, manual backend deploy
 ├── DESIGN.md                "The Night Court" design system
 ├── docker-compose.yml
 ├── .env.example

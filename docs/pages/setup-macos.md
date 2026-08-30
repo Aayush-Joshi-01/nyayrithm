@@ -1,3 +1,9 @@
+---
+title: macOS setup
+nav_order: 3
+permalink: /setup/macos/
+---
+
 # macOS Setup Guide
 
 Step-by-step instructions for running Nyayrithm on macOS 13 Ventura or later (Intel and Apple Silicon).
@@ -8,9 +14,9 @@ Default LLM: **Gemini 2.5 Flash** (free tier, no credit card required).
 ## Contents
 
 - [Prerequisites](#prerequisites)
-- [Option A — Docker Desktop (recommended)](#option-a--docker-desktop-recommended)
-- [Option B — Native (no Docker)](#option-b--native-no-docker)
-- [Option C — Fully offline with Ollama](#option-c--fully-offline-with-ollama)
+- [Option A: Docker Desktop (recommended)](#option-a--docker-desktop-recommended)
+- [Option B: Native (no Docker)](#option-b--native-no-docker)
+- [Option C: Fully offline with Ollama](#option-c--fully-offline-with-ollama)
 - [Configuring LLM providers](#configuring-llm-providers)
 - [Verify the installation](#verify-the-installation)
 - [Apple Silicon notes](#apple-silicon-notes)
@@ -27,7 +33,7 @@ If not already installed:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-Follow the post-install instructions to add Homebrew to your PATH (especially on Apple Silicon — adds `/opt/homebrew/bin`).
+Follow the post-install instructions to add Homebrew to your PATH (especially on Apple Silicon, adds `/opt/homebrew/bin`).
 
 Verify:
 ```bash
@@ -51,9 +57,9 @@ xcode-select --install
 
 ---
 
-## Option A — Docker Desktop (recommended)
+## Option A: Docker Desktop (recommended)
 
-### Step 1 — Install Docker Desktop
+### Step 1: Install Docker Desktop
 
 Download from https://www.docker.com/products/docker-desktop/
 
@@ -68,7 +74,7 @@ docker --version          # Docker version 27+
 docker compose version    # Docker Compose version v2.30+
 ```
 
-### Step 2 — Install Node.js 24 LTS + Bun
+### Step 2: Install Node.js 24 LTS + Bun
 
 ```bash
 brew install node@24
@@ -85,7 +91,7 @@ node --version    # v24.x.x
 bun --version     # 1.x.x
 ```
 
-### Step 3 — Clone and configure
+### Step 3: Clone and configure
 
 ```bash
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
@@ -98,14 +104,14 @@ cp .env.example .env
 Open `.env` in your editor and set:
 
 ```env
-# ── Gemini (free tier — default) ─────────────────────────
+# ── Gemini (free tier, default) ─────────────────────────
 LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...your-key...   # https://aistudio.google.com/app/apikey
 ```
 
-> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key** — no credit card required.
+> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key**: no credit card required.
 
-### Step 4 — Start the stack
+### Step 4: Start the stack
 
 ```bash
 docker compose up --build -d
@@ -136,11 +142,11 @@ docker compose logs -f backend celery_worker   # follow logs
 
 ---
 
-## Option B — Native (no Docker)
+## Option B: Native (no Docker)
 
-All services run natively on macOS. Best for development — faster hot-reload, no Docker overhead.
+All services run natively on macOS. Best for development, faster hot-reload, no Docker overhead.
 
-### Step 1 — Install Python 3.13
+### Step 1: Install Python 3.13
 
 ```bash
 brew install python@3.13
@@ -154,7 +160,7 @@ Verify:
 python3.13 --version   # Python 3.13.x
 ```
 
-### Step 2 — Install uv
+### Step 2: Install uv
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -165,7 +171,7 @@ Close and reopen your terminal, then verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + Bun
+### Step 3: Install Node.js 24 LTS + Bun
 
 ```bash
 brew install node@24
@@ -174,7 +180,7 @@ source ~/.zshrc
 curl -fsSL https://bun.sh/install | bash
 ```
 
-### Step 4 — Install Redis
+### Step 4: Install Redis
 
 ```bash
 brew install redis
@@ -186,7 +192,7 @@ Verify:
 redis-cli ping    # PONG
 ```
 
-### Step 5 — Clone and configure
+### Step 5: Clone and configure
 
 ```bash
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
@@ -228,53 +234,53 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
 
-### Step 6 — Install backend dependencies
+### Step 6: Install backend dependencies
 
 ```bash
 cd backend
 uv pip install -e ".[dev]"
 ```
 
-### Step 7 — Install frontend dependencies
+### Step 7: Install frontend dependencies
 
 ```bash
 cd ../frontend
 bun install
 ```
 
-### Step 8 — Run (three terminal tabs)
+### Step 8: Run (three terminal tabs)
 
 Open three tabs in Terminal or iTerm2.
 
-**Tab 1 — API server:**
+**Tab 1, API server:**
 ```bash
 cd nyayrithm/backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-**Tab 2 — Celery worker:**
+**Tab 2, Celery worker:**
 ```bash
 cd nyayrithm/backend
 uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulation,default
 ```
 
-**Tab 3 — Frontend:**
+**Tab 3, Frontend:**
 ```bash
 cd nyayrithm/frontend
 bun dev
 ```
 
-> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running — start it with `docker compose up keycloak -d`.
+> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running, start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 
 ---
 
-## Option C — Fully offline with Ollama
+## Option C: Fully offline with Ollama
 
 No internet required after initial model download.
 
-### Step 1 — Install Ollama
+### Step 1: Install Ollama
 
 ```bash
 brew install ollama
@@ -282,16 +288,16 @@ brew install ollama
 
 Or download directly from https://ollama.com/download (macOS `.dmg` app).
 
-### Step 2 — Download models
+### Step 2: Download models
 
 ```bash
-ollama pull llama3.1:8b       # ~4.7 GB — good balance of speed vs quality
-ollama pull mistral-nemo      # ~7.1 GB — alternative
+ollama pull llama3.1:8b       # ~4.7 GB, good balance of speed vs quality
+ollama pull mistral-nemo      # ~7.1 GB, alternative
 # For Apple Silicon M2/M3/M4 Ultra with enough RAM:
-# ollama pull llama3.1:70b    # ~40 GB — best quality
+# ollama pull llama3.1:70b    # ~40 GB, best quality
 ```
 
-### Step 3 — Start Ollama server
+### Step 3: Start Ollama server
 
 If you installed via Homebrew:
 ```bash
@@ -305,7 +311,7 @@ Verify:
 curl http://localhost:11434/api/tags   # lists downloaded models
 ```
 
-### Step 4 — Configure `.env`
+### Step 4: Configure `.env`
 
 ```env
 LLM_DEFAULT_PROVIDER=ollama
@@ -319,18 +325,18 @@ VECTOR_DB_BACKEND=chroma
 STORAGE_BACKEND=local
 ```
 
-Then follow Steps 6–8 from Option B.
+Then follow Steps 6-8 from Option B.
 
 **Recommended Ollama models for Apple Silicon:**
 
 | Chip | Unified Memory | Recommended model |
 |------|---------------|-------------------|
 | M1/M2 (base) | 8 GB | `mistral-nemo`, `llama3.2:3b` |
-| M1/M2 Pro/Max | 16–32 GB | `llama3.1:8b`, `gemma2:9b` |
-| M2/M3 Max/Ultra | 64–96 GB | `llama3.1:70b` |
+| M1/M2 Pro/Max | 16-32 GB | `llama3.1:8b`, `gemma2:9b` |
+| M2/M3 Max/Ultra | 64-96 GB | `llama3.1:70b` |
 | M4 Max/Ultra | 128 GB+ | `llama3.1:70b` (fast) |
 
-Apple Silicon runs inference entirely on the Neural Engine + GPU — significantly faster than Intel Macs for local models.
+Apple Silicon runs inference entirely on the Neural Engine + GPU, significantly faster than Intel Macs for local models.
 
 ---
 
@@ -365,7 +371,7 @@ ROLE_PROVIDER_MAP = {
 
 | Model | RPD | Best for |
 |-------|-----|---------|
-| `gemini-flash-lite-latest` | 1,500 | Most roles — best reasoning on free tier |
+| `gemini-flash-lite-latest` | 1,500 | Most roles, best reasoning on free tier |
 | `gemini-flash-lite-latest` | 1,500 | High-frequency simple roles |
 | `gemini-2.5-pro` | 50 | Judge only (very limited free quota) |
 
@@ -444,7 +450,7 @@ cd frontend && bun run lint && bun run tsc --noEmit
 
 ### Docker performance
 
-Docker Desktop on Apple Silicon uses a lightweight Linux VM (Virtualization.framework). Performance is excellent — comparable to native speeds for most workloads.
+Docker Desktop on Apple Silicon uses a lightweight Linux VM (Virtualization.framework). Performance is excellent, comparable to native speeds for most workloads.
 
 If you encounter `platform: linux/amd64` image compatibility warnings, add to `docker-compose.yml`:
 ```yaml
@@ -471,11 +477,11 @@ Some older Python packages may require Rosetta 2 if they lack ARM64 wheels:
 softwareupdate --install-rosetta --agree-to-license
 ```
 
-This is rarely needed in 2026 — most packages have ARM64 wheels.
+This is rarely needed in 2026, most packages have ARM64 wheels.
 
 ### faster-whisper on Apple Silicon
 
-Audio transcription via `faster-whisper` uses CoreML acceleration on Apple Silicon automatically when `ctranslate2` detects the chip. Transcription runs 3–5x faster than on Intel.
+Audio transcription via `faster-whisper` uses CoreML acceleration on Apple Silicon automatically when `ctranslate2` detects the chip. Transcription runs 3-5x faster than on Intel.
 
 ---
 
@@ -519,7 +525,7 @@ uv pip install -e ".[dev]"
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Always prefix commands with `uv run` — it automatically activates the project's virtual environment.
+Always prefix commands with `uv run`, it automatically activates the project's virtual environment.
 
 ### Celery workers not processing tasks
 

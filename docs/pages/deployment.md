@@ -1,3 +1,9 @@
+---
+title: Deployment
+nav_order: 8
+permalink: /deployment/
+---
+
 # Deployment
 
 Nyayrithm runs on **two domains** in production:
@@ -22,14 +28,14 @@ NEXT_PUBLIC_APP_URL=https://nyayrithm.ai.aayushjoshi.dev
 
 - `src/lib/site.ts` exposes `MARKETING_URL` and `appHref("/path")`.
 - `metadataBase`, canonicals, `sitemap.ts`, `robots.ts`, `opengraph-image`, and the `Organization` JSON-LD use **`MARKETING_URL`**.
-- Every link into the product — "Convene a proceeding", "Sign in" on the landing and docs — uses **`appHref()`**, which returns an absolute `APP_URL` link when the var is set and a same-origin relative link when it is not.
+- Every link into the product: "Convene a proceeding", "Sign in" on the landing and docs, uses **`appHref()`**, which returns an absolute `APP_URL` link when the var is set and a same-origin relative link when it is not.
 - Leave both **unset locally**; links stay relative and everything runs on `localhost:3000`.
 
 If `NEXT_PUBLIC_APP_URL` is unset, the split collapses to a single-domain app with no code changes.
 
 ---
 
-## Option A — one deployment, two domains (recommended)
+## Option A: one deployment, two domains (recommended)
 
 Deploy the Next.js app once. Point both hostnames at it.
 
@@ -53,13 +59,13 @@ Deploy the Next.js app once. Point both hostnames at it.
 
 3. DNS: an `A` / `AAAA` (or `CNAME` on a PaaS) record for **each** hostname pointing at the same target.
 
-4. Reverse proxy / edge: route both hostnames to the container. No host-based rules are needed — the app serves every route on both.
+4. Reverse proxy / edge: route both hostnames to the container. No host-based rules are needed, the app serves every route on both.
 
 **Downside:** `nyayrithm.aayushjoshi.dev/dashboard` also resolves (to the login wall). If you want the marketing domain to be strictly marketing, add a redirect at the edge: on `nyayrithm.aayushjoshi.dev`, 308-redirect anything that is not `/`, `/docs`, `/sitemap.xml`, `/robots.txt`, `/llms*.txt`, `/opengraph-image`, or `/_next/*` to the same path on `nyayrithm.ai.aayushjoshi.dev`.
 
-## Option B — two deployments
+## Option B: two deployments
 
-- **Marketing** (`nyayrithm.aayushjoshi.dev`): deploy the same repo, but only `/` and `/docs` matter. Set `NEXT_PUBLIC_APP_URL` to the app domain so the CTAs cross over. You can leave the backend vars pointing anywhere valid — the marketing routes never call the API.
+- **Marketing** (`nyayrithm.aayushjoshi.dev`): deploy the same repo, but only `/` and `/docs` matter. Set `NEXT_PUBLIC_APP_URL` to the app domain so the CTAs cross over. You can leave the backend vars pointing anywhere valid: the marketing routes never call the API.
 - **App** (`nyayrithm.ai.aayushjoshi.dev`): full deployment with real API / WS / Keycloak URLs. Set `NEXT_PUBLIC_APP_URL` to its own domain (so absolute links resolve to itself).
 
 This keeps the marketing surface small and independently cacheable at the cost of building twice.

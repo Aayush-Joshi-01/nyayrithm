@@ -1,3 +1,9 @@
+---
+title: Linux setup
+nav_order: 4
+permalink: /setup/linux/
+---
+
 # Linux Setup Guide
 
 Step-by-step instructions for running Nyayrithm on Ubuntu 22.04 / 24.04 LTS, Debian 12, Fedora 40+, and Arch Linux.
@@ -8,9 +14,9 @@ Default LLM: **Gemini 2.5 Flash** (free tier, no credit card required).
 ## Contents
 
 - [Prerequisites](#prerequisites)
-- [Option A — Docker Compose (recommended)](#option-a--docker-compose-recommended)
-- [Option B — Native (no Docker)](#option-b--native-no-docker)
-- [Option C — Fully offline with Ollama](#option-c--fully-offline-with-ollama)
+- [Option A: Docker Compose (recommended)](#option-a--docker-compose-recommended)
+- [Option B: Native (no Docker)](#option-b--native-no-docker)
+- [Option C: Fully offline with Ollama](#option-c--fully-offline-with-ollama)
 - [Configuring LLM providers](#configuring-llm-providers)
 - [Verify the installation](#verify-the-installation)
 - [Systemd service setup (production-like)](#systemd-service-setup-production-like)
@@ -44,11 +50,11 @@ git --version   # 2.43+
 
 ---
 
-## Option A — Docker Compose (recommended)
+## Option A: Docker Compose (recommended)
 
-The simplest setup — one command starts everything.
+The simplest setup, one command starts everything.
 
-### Step 1 — Install Docker Engine + Compose plugin
+### Step 1: Install Docker Engine + Compose plugin
 
 **Ubuntu / Debian (official Docker repo):**
 ```bash
@@ -86,7 +92,7 @@ sudo pacman -S docker docker-compose
 sudo systemctl start docker && sudo systemctl enable docker
 ```
 
-**Post-install — run Docker without sudo:**
+**Post-install, run Docker without sudo:**
 ```bash
 sudo usermod -aG docker $USER
 newgrp docker    # apply group change in current shell
@@ -99,7 +105,7 @@ docker compose version    # Docker Compose version v2.30+
 docker run hello-world    # confirm it works
 ```
 
-### Step 2 — Install Node.js 24 LTS + Bun
+### Step 2: Install Node.js 24 LTS + Bun
 
 **Ubuntu / Debian (via NodeSource):**
 ```bash
@@ -117,7 +123,7 @@ sudo dnf install -y nodejs   # or use NodeSource: curl -fsSL https://rpm.nodesou
 sudo pacman -S nodejs npm
 ```
 
-**Bun (all distros — JS runtime + package manager):**
+**Bun (all distros, JS runtime + package manager):**
 ```bash
 curl -fsSL https://bun.sh/install | bash
 ```
@@ -128,7 +134,7 @@ node --version    # v24.x.x
 bun --version     # 1.x.x
 ```
 
-### Step 3 — Clone and configure
+### Step 3: Clone and configure
 
 ```bash
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
@@ -141,14 +147,14 @@ nano .env    # or: code .env / vim .env
 Set at minimum:
 
 ```env
-# ── Gemini (free tier — default) ─────────────────────────
+# ── Gemini (free tier, default) ─────────────────────────
 LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...your-key...   # https://aistudio.google.com/app/apikey
 ```
 
-> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key** — no credit card required.
+> **Get a free Gemini API key:** Visit https://aistudio.google.com/app/apikey → **Create API key**: no credit card required.
 
-### Step 4 — Start the stack
+### Step 4: Start the stack
 
 ```bash
 docker compose up --build -d
@@ -175,13 +181,13 @@ docker compose logs -f backend   # follow backend logs
 
 ---
 
-## Option B — Native (no Docker)
+## Option B: Native (no Docker)
 
-All services run natively. Best for development — fastest hot-reload, direct access to all logs.
+All services run natively. Best for development, fastest hot-reload, direct access to all logs.
 
-### Step 1 — Install Python 3.13
+### Step 1: Install Python 3.13
 
-**Ubuntu 24.04 (ships with 3.12 — add 3.13 via deadsnakes PPA):**
+**Ubuntu 24.04 (ships with 3.12, add 3.13 via deadsnakes PPA):**
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
@@ -210,7 +216,7 @@ Verify:
 python3.13 --version   # Python 3.13.x
 ```
 
-### Step 2 — Install uv
+### Step 2: Install uv
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -228,11 +234,11 @@ Verify:
 uv --version   # uv 0.6+
 ```
 
-### Step 3 — Install Node.js 24 LTS + Bun
+### Step 3: Install Node.js 24 LTS + Bun
 
 (Same as Option A, Step 2 above.)
 
-### Step 4 — Install Redis
+### Step 4: Install Redis
 
 **Ubuntu / Debian:**
 ```bash
@@ -256,7 +262,7 @@ sudo systemctl start redis
 sudo systemctl enable redis
 ```
 
-### Step 5 — Clone and configure
+### Step 5: Clone and configure
 
 ```bash
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
@@ -298,51 +304,51 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
 ```
 
-### Step 6 — Install backend dependencies
+### Step 6: Install backend dependencies
 
 ```bash
 cd backend
 uv pip install -e ".[dev]"
 ```
 
-### Step 7 — Install frontend dependencies
+### Step 7: Install frontend dependencies
 
 ```bash
 cd ../frontend
 bun install
 ```
 
-### Step 8 — Run (three terminals)
+### Step 8: Run (three terminals)
 
-**Terminal 1 — API server:**
+**Terminal 1, API server:**
 ```bash
 cd nyayrithm/backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-**Terminal 2 — Celery worker:**
+**Terminal 2, Celery worker:**
 ```bash
 cd nyayrithm/backend
 uv run celery -A app.tasks.celery_app worker --loglevel=info -Q evidence,simulation,default
 ```
 
-**Terminal 3 — Frontend:**
+**Terminal 3, Frontend:**
 ```bash
 cd nyayrithm/frontend
 bun dev
 ```
 
-> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running — start it with `docker compose up keycloak -d`.
+> **Native dev + Keycloak:** Ensure `frontend/.env.local` exists. Run `make env` once to create it. You still need Keycloak running, start it with `docker compose up keycloak -d`.
 
 Open http://localhost:3000.
 
 ---
 
-## Option C — Fully offline with Ollama
+## Option C: Fully offline with Ollama
 
 No internet required after initial model download.
 
-### Step 1 — Install Ollama
+### Step 1: Install Ollama
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
@@ -356,11 +362,11 @@ ollama --version
 systemctl status ollama   # should be active (running)
 ```
 
-### Step 2 — Download models
+### Step 2: Download models
 
 ```bash
-ollama pull llama3.1:8b       # ~4.7 GB — recommended
-ollama pull mistral-nemo      # ~7.1 GB — alternative
+ollama pull llama3.1:8b       # ~4.7 GB, recommended
+ollama pull mistral-nemo      # ~7.1 GB, alternative
 # For 70B (needs 64+ GB RAM + good GPU):
 # ollama pull llama3.1:70b
 ```
@@ -373,7 +379,7 @@ ollama list    # shows downloaded models
 curl http://localhost:11434/api/tags   # JSON list via API
 ```
 
-### Step 3 — Configure `.env`
+### Step 3: Configure `.env`
 
 ```env
 LLM_DEFAULT_PROVIDER=ollama
@@ -387,7 +393,7 @@ VECTOR_DB_BACKEND=chroma
 STORAGE_BACKEND=local
 ```
 
-Then follow Steps 6–8 from Option B.
+Then follow Steps 6-8 from Option B.
 
 **GPU acceleration:** If you have an NVIDIA GPU, install CUDA and `nvidia-container-toolkit`. Ollama detects CUDA automatically and offloads layers to GPU for significantly faster inference.
 
@@ -433,7 +439,7 @@ ROLE_PROVIDER_MAP = {
 |-------|-------------------|-------|
 | `gemini-flash-lite-latest` | 1,500 | Best reasoning on free tier |
 | `gemini-flash-lite-latest` | 1,500 | Lightest, good for simple roles |
-| `gemini-2.5-pro` | 50 | Very limited — use sparingly |
+| `gemini-2.5-pro` | 50 | Very limited, use sparingly |
 
 ### OpenAI
 
@@ -620,7 +626,7 @@ uv run celery -A app.tasks.celery_app worker --pool=solo --loglevel=info \
     -Q evidence,simulation,default
 ```
 
-For production, use `prefork` (default) — this issue only appears in restricted environments.
+For production, use `prefork` (default), this issue only appears in restricted environments.
 
 ### Port 8000 already in use
 
