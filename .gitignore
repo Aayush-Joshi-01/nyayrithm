@@ -70,6 +70,13 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Jekyll / GitHub Pages (docs/ site)
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/.bundle/
+docs/vendor/
+
 # PyBuilder
 .pybuilder/
 target/

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="{{ site.lang | default: 'en' }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("nyay-theme");
+          if (t === "dark" || t === "light")
+            document.documentElement.setAttribute("data-theme", t);
+        } catch (e) {}
+        requestAnimationFrame(function () {
+          document.documentElement.classList.add("theme-ready");
+        });
+      })();
+    </script>
+    {% seo %}
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="{{ '/assets/fonts/libre-franklin-latin.woff2' | relative_url }}"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="{{ '/assets/fonts/spectral-600-latin.woff2' | relative_url }}"
+      crossorigin
+    />
+    <link
+      rel="stylesheet"
+      href="{{ '/assets/css/night-court.css' | relative_url }}"
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%230B0E14'/%3E%3Crect x='12' y='6' width='2' height='20' fill='%23C88A4A'/%3E%3Crect x='12' y='6' width='2' height='7' fill='%23FF7A3D'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <input type="checkbox" id="nc-nav-toggle" aria-hidden="true" />
+
+    <header class="nc-header">
+      <label for="nc-nav-toggle" class="nc-menu-btn" aria-label="Toggle navigation">
+        <!-- Tabler Icons: menu-2 (MIT) -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </label>
+
+      <a class="nc-brand" href="{{ '/' | relative_url }}">
+        Nyayrithm <span>docs</span>
+      </a>
+
+      <nav>
+        <a class="nc-navlink" href="{{ site.links.marketing }}">Product</a>
+        <a class="nc-navlink" href="{{ site.links.github }}">GitHub</a>
+        <a class="nc-cta" href="{{ site.links.app }}">Open the app</a>
+        <button type="button" class="nc-toggle" aria-label="Toggle light or dark theme">
+          <!-- Tabler Icons: sun / moon (MIT) -->
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+            <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" />
+          </svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+          </svg>
+        </button>
+      </nav>
+    </header>
+
+    <div class="nc-shell">
+      <aside class="nc-sidebar">
+        {% for group in site.data.nav %}
+        <h2>{{ group.section }}</h2>
+        <ul>
+          {% for item in group.items %}
+          <li>
+            <a
+              href="{{ item.url | relative_url }}"
+              {% if page.url == item.url %}aria-current="page"{% endif %}
+              >{{ item.title }}</a
+            >
+          </li>
+          {% endfor %}
+        </ul>
+        {% endfor %}
+      </aside>
+
+      <main class="nc-main">
+        <article class="nc-article">{{ content }}</article>
+
+        <footer class="nc-footer">
+          <span>Nyayrithm is pre-launch. This site builds from the <code>docs/</code> folder.</span>
+          <span>
+            <a href="{{ site.links.github }}/blob/main/LICENSE">MIT</a>
+            <a href="{{ site.links.github }}/blob/main/CONTRIBUTING.md">Contributing</a>
+            <a href="{{ site.links.github }}/blob/main/DESIGN.md">Design system</a>
+          </span>
+        </footer>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        var btn = document.querySelector(".nc-toggle");
+        if (btn)
+          btn.addEventListener("click", function () {
+            var root = document.documentElement;
+            var cur = root.getAttribute("data-theme");
+            if (!cur)
+              cur = window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+            var next = cur === "dark" ? "light" : "dark";
+            root.setAttribute("data-theme", next);
+            try {
+              localStorage.setItem("nyay-theme", next);
+            } catch (e) {}
+          });
+
+        document
+          .querySelectorAll(".nc-article h2[id], .nc-article h3[id]")
+          .forEach(function (h) {
+            var a = document.createElement("a");
+            a.href = "#" + h.id;
+            a.className = "header-anchor";
+            a.setAttribute("aria-hidden", "true");
+            a.textContent = "#";
+            h.appendChild(a);
+          });
+
+        var toggle = document.getElementById("nc-nav-toggle");
+        document.querySelectorAll(".nc-sidebar a").forEach(function (a) {
+          a.addEventListener("click", function () {
+            if (toggle) toggle.checked = false;
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

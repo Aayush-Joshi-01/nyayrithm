@@ -1,0 +1,46 @@
+# GitHub Pages (Jekyll) config for the Nyayrithm developer docs.
+# Served at https://aayush-joshi-01.github.io/nyayrithm/
+#
+# No external theme. The look is hand-built to match "The Night Court"
+# design system (see /DESIGN.md). Layout: docs/_layouts/default.html,
+# styles: docs/assets/css/night-court.css.
+#
+# To move to a custom subdomain later: set `baseurl: ""`, `url: "https://<domain>"`,
+# and add a `docs/CNAME` file with that domain.
+
+title: Nyayrithm docs
+description: >-
+  Run, understand, and extend Nyayrithm, a multi-agent, evidence-grounded
+  courtroom simulation platform. Self-hostable and provider-agnostic.
+url: "https://aayush-joshi-01.github.io"
+baseurl: "/nyayrithm"
+lang: en
+
+plugins:
+  - jekyll-seo-tag
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  syntax_highlighter: rouge
+  input: GFM
+  hard_wrap: false
+
+# app + source, surfaced in the header
+links:
+  app: "https://nyayrithm.ai.aayushjoshi.dev"
+  marketing: "https://nyayrithm.aayushjoshi.dev"
+  github: "https://github.com/Aayush-Joshi-01/nyayrithm"
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .bundle
+  - README.md
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
