@@ -7,7 +7,11 @@ import { LiveRecord } from "@/components/landing/LiveRecord"
 import { FAQ_ITEMS } from "@/components/landing/faq-data"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { roleStyle, ROLE_SIGIL, formatRole } from "@/lib/utils"
+import { appHref } from "@/lib/site"
 import type { AgentRole } from "@/types/api"
+
+const SIGN_IN = appHref("/login")
+const SIGN_UP = appHref("/signup")
 
 /* one word of the hero line swaps with the resolved theme */
 function ThemeWord() {
@@ -155,13 +159,13 @@ export function LandingPage() {
               Docs
             </Link>
             <Link
-              href="/login"
+              href={SIGN_IN}
               className="text-[0.82rem] text-foreground/55 transition-colors hover:text-foreground"
             >
               Sign in
             </Link>
             <Link
-              href="/signup"
+              href={SIGN_UP}
               className="rounded-sm bg-ember px-3 py-1.5 text-[0.78rem] font-semibold text-[#12100A] transition-[background-color,transform] hover:brightness-105 active:translate-y-px sm:px-3.5 sm:text-[0.8rem]"
             >
               Convene<span className="hidden sm:inline"> a proceeding</span>
@@ -188,7 +192,7 @@ export function LandingPage() {
 
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link
-                href="/signup"
+                href={SIGN_UP}
                 className="rounded-sm bg-ember px-6 py-3 text-[0.9rem] font-semibold text-[#12100A] transition-[filter,transform] duration-150 hover:brightness-105 active:translate-y-px active:scale-[0.985]"
               >
                 Convene a proceeding
@@ -368,7 +372,7 @@ export function LandingPage() {
             actually looks like.
           </p>
           <Link
-            href="/signup"
+            href={SIGN_UP}
             className="mt-10 inline-block rounded-sm bg-ember px-7 py-3 text-[0.9rem] font-semibold text-[#12100A] transition-[filter,transform] hover:brightness-105 active:translate-y-px"
           >
             Convene a proceeding
@@ -389,7 +393,7 @@ export function LandingPage() {
           <div className="flex items-center gap-5 text-[0.78rem] text-foreground/40">
             <Link href="/docs" className="transition-colors hover:text-foreground/70">Docs</Link>
             <Link href="#bench" className="transition-colors hover:text-foreground/70">The bench</Link>
-            <Link href="/login" className="transition-colors hover:text-foreground/70">Sign in</Link>
+            <Link href={SIGN_IN} className="transition-colors hover:text-foreground/70">Sign in</Link>
           </div>
         </div>
         <p className="mx-auto mt-8 max-w-6xl font-mono text-[0.68rem] text-foreground/45">

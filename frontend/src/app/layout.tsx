@@ -3,6 +3,7 @@ import { Spectral, Libre_Franklin, JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 import { QueryProvider } from "@/components/layout/QueryProvider"
 import { themeInitScript } from "@/components/theme/theme-init"
+import { MARKETING_URL } from "@/lib/site"
 
 const spectral = Spectral({
   subsets: ["latin"],
@@ -26,7 +27,7 @@ const mono = JetBrains_Mono({
   display: "swap",
 })
 
-const SITE_URL = "https://nyayrithm.aayushjoshi.dev"
+const SITE_URL = MARKETING_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

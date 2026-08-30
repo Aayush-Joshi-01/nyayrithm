@@ -25,3 +25,5 @@
 
 - Home: https://nyayrithm.aayushjoshi.dev/
 - Documentation: https://nyayrithm.aayushjoshi.dev/docs
+- App (sign in and run proceedings): https://nyayrithm.ai.aayushjoshi.dev/
+- Source: https://github.com/Aayush-Joshi-01/nyayrithm

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next"
 
-const SITE_URL = "https://nyayrithm.aayushjoshi.dev"
+import { MARKETING_URL as SITE_URL } from "@/lib/site"
 
 export default function robots(): MetadataRoute.Robots {
   return {

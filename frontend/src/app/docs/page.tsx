@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { DocsPage } from "@/components/docs/DocsPage"
+import { MARKETING_URL as SITE_URL } from "@/lib/site"
 
 export const metadata: Metadata = {
   title: "Documentation",
@@ -10,11 +11,9 @@ export const metadata: Metadata = {
     title: "Nyayrithm Documentation",
     description:
       "Run the full stack locally in five minutes. Architecture, the agent system, role-scoped retrieval, providers, and configuration.",
-    url: "https://nyayrithm.aayushjoshi.dev/docs",
+    url: `${SITE_URL}/docs`,
   },
 }
-
-const SITE_URL = "https://nyayrithm.aayushjoshi.dev"
 
 const jsonLd = {
   "@context": "https://schema.org",
