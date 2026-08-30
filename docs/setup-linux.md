@@ -131,7 +131,7 @@ bun --version     # 1.x.x
 ### Step 3 — Clone and configure
 
 ```bash
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 
 cp .env.example .env
@@ -259,7 +259,7 @@ sudo systemctl enable redis
 ### Step 5 — Clone and configure
 
 ```bash
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 cp .env.example .env
 ```

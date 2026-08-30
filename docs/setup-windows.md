@@ -102,7 +102,7 @@ bun --version   # 1.x.x
 ### Step 4 — Clone and configure
 
 ```powershell
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 
 # Create .env from template
@@ -231,7 +231,7 @@ VECTOR_DB_BACKEND=chroma
 
 In PowerShell:
 ```powershell
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 copy .env.example .env
 ```

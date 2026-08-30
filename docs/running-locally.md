@@ -9,7 +9,7 @@ This guide covers every way to run Nyayrithm on your machine — from the full D
 **Requires:** Docker Desktop (Mac/Windows) or Docker Engine + Compose plugin (Linux)
 
 ```bash
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 
 # Create .env and fill in at least one LLM API key

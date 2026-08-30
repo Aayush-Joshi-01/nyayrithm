@@ -364,10 +364,10 @@ vite.config.ts.timestamp-*
 CLAUDE.md
 .claude/
 
+# Impeccable design tooling — local only (DESIGN.md is tracked as project docs)
 .github/agents/*
 .github/hooks/*
 .github/skills/*
 PRODUCT.md
 .impeccable/*
-DESIGN.md
 .mcp.json
