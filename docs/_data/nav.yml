@@ -1,0 +1,23 @@
+# Sidebar navigation for the docs site. Order here is the order shown.
+- section: Start
+  items:
+    - title: Home
+      url: /
+- section: Setup
+  items:
+    - title: Windows
+      url: /setup/windows/
+    - title: macOS
+      url: /setup/macos/
+    - title: Linux
+      url: /setup/linux/
+- section: Guides
+  items:
+    - title: Running locally
+      url: /running-locally/
+    - title: LLM providers
+      url: /llm-providers/
+    - title: Architecture
+      url: /architecture/
+    - title: Deployment
+      url: /deployment/

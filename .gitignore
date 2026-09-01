@@ -70,6 +70,13 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Jekyll / GitHub Pages (docs/ site)
+docs/_site/
+docs/.jekyll-cache/
+docs/.jekyll-metadata
+docs/.bundle/
+docs/vendor/
+
 # PyBuilder
 .pybuilder/
 target/
@@ -364,10 +371,10 @@ vite.config.ts.timestamp-*
 CLAUDE.md
 .claude/
 
+# Impeccable design tooling — local only (DESIGN.md is tracked as project docs)
 .github/agents/*
 .github/hooks/*
 .github/skills/*
 PRODUCT.md
 .impeccable/*
-DESIGN.md
 .mcp.json

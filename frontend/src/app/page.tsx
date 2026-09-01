@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { LandingPage } from "@/components/landing/LandingPage"
 import { FAQ_ITEMS } from "@/components/landing/faq-data"
+import { MARKETING_URL as SITE_URL, appHref } from "@/lib/site"
 
 export const metadata: Metadata = {
   title: "AI trial simulation for case preparation",
@@ -8,8 +9,6 @@ export const metadata: Metadata = {
     "Nyayrithm runs a graph of AI agents that argue a case from the evidence you give it. Each agent plays a legal role with scoped knowledge, and every claim is seamed to the passage it came from. Self-hostable, provider-agnostic, and runnable fully offline.",
   alternates: { canonical: "/" },
 }
-
-const SITE_URL = "https://nyayrithm.aayushjoshi.dev"
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -27,6 +26,7 @@ const jsonLd = {
       "@type": "SoftwareApplication",
       "@id": `${SITE_URL}/#app`,
       name: "Nyayrithm",
+      url: appHref("/"),
       applicationCategory: "BusinessApplication",
       applicationSubCategory: "Legal case-preparation software",
       operatingSystem: "Web, self-hosted (Docker), Linux",

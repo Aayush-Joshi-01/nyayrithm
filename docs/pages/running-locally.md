@@ -1,15 +1,21 @@
+---
+title: Running locally
+nav_order: 5
+permalink: /running-locally/
+---
+
 # Running Locally
 
-This guide covers every way to run Nyayrithm on your machine — from the full Docker stack down to a completely container-free, zero-cost setup.
+This guide covers every way to run Nyayrithm on your machine, from the full Docker stack down to a completely container-free, zero-cost setup.
 
 ---
 
-## Option A — Full Docker stack (simplest)
+## Option A: Full Docker stack (simplest)
 
 **Requires:** Docker Desktop (Mac/Windows) or Docker Engine + Compose plugin (Linux)
 
 ```bash
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 
 # Create .env and fill in at least one LLM API key
@@ -24,15 +30,15 @@ make migrate
 ```
 
 What starts:
-- `backend` — FastAPI on port 8000
-- `celery_worker` — ingestion + simulation task worker
-- `celery_beat` — scheduled tasks
-- `frontend` — Next.js dev server on port 3000
-- `db` — PostgreSQL 16 on port 5432
-- `redis` — Redis 7 on port 6379
-- `qdrant` — Qdrant vector DB on port 6333
-- `minio` — S3-compatible local storage on ports 9000 / 9001
-- `keycloak` — Keycloak 26 identity provider on port 8080
+- `backend`: FastAPI on port 8000
+- `celery_worker`: ingestion + simulation task worker
+- `celery_beat`: scheduled tasks
+- `frontend`: Next.js dev server on port 3000
+- `db`: PostgreSQL 16 on port 5432
+- `redis`: Redis 7 on port 6379
+- `qdrant`: Qdrant vector DB on port 6333
+- `minio`: S3-compatible local storage on ports 9000 / 9001
+- `keycloak`: Keycloak 26 identity provider on port 8080
 
 > **Keycloak note:** On first start Keycloak takes ~30 seconds to import the realm. The `nyayrithm` realm and `nyayrithm-app` client are auto-created from `infra/keycloak/realm-export.json`. Admin UI: http://localhost:8080 (`admin` / `admin`).
 
@@ -40,7 +46,7 @@ Open http://localhost:3000.
 
 ---
 
-## Option B — Minimal Docker (no local Python/Node needed)
+## Option B: Minimal Docker (no local Python/Node needed)
 
 If you only want containers for infra services (DB, Redis, Qdrant) and run app code natively:
 
@@ -66,7 +72,7 @@ bun dev
 
 ---
 
-## Option C — No Docker at all (fully local, zero cost)
+## Option C: No Docker at all (fully local, zero cost)
 
 The lightest possible setup. Uses SQLite, Chroma (in-process), local file storage, and Gemini free tier (or Ollama for fully offline).
 
@@ -92,7 +98,7 @@ sudo apt install redis-server && sudo systemctl start redis
 sudo apt install redis-server && redis-server --daemonize yes
 ```
 
-> Redis is needed for Celery. If you want truly zero dependencies, set `CELERY_BROKER_URL=memory://` in `.env` to use an in-memory broker (single-worker, non-persistent — fine for local testing).
+> Redis is needed for Celery. If you want truly zero dependencies, set `CELERY_BROKER_URL=memory://` in `.env` to use an in-memory broker (single-worker, non-persistent, fine for local testing).
 
 ### `.env` for Option C
 
@@ -103,16 +109,16 @@ DEBUG=true
 SECRET_KEY=local-dev-secret-change-me
 CORS_ORIGINS=["http://localhost:3000"]
 
-# DB — SQLite (no container)
+# DB, SQLite (no container)
 DB_BACKEND=sqlite
 SQLITE_PATH=./nyayrithm.db
 
-# Vector DB — Chroma (runs in-process)
+# Vector DB, Chroma (runs in-process)
 VECTOR_DB_BACKEND=chroma
 CHROMA_HOST=localhost
 CHROMA_PORT=8001
 
-# Storage — local filesystem
+# Storage, local filesystem
 STORAGE_BACKEND=local
 STORAGE_LOCAL_ROOT=./storage
 
@@ -121,11 +127,11 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
 REDIS_URL=redis://localhost:6379/2
 
-# LLM — Gemini free tier
+# LLM, Gemini free tier
 LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...your-key...
 
-# Embedder — local sentence-transformers (no API key)
+# Embedder, local sentence-transformers (no API key)
 EMBEDDER_BACKEND=sentence-transformers
 EMBEDDING_DIMENSION=384
 
@@ -141,34 +147,34 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 
 Open three terminals:
 
-**Terminal 1 — API server**
+**Terminal 1, API server**
 ```bash
 cd backend
 uv pip install -e ".[dev]"
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-**Terminal 2 — Celery worker**
+**Terminal 2, Celery worker**
 ```bash
 cd backend
 uv run celery -A app.tasks.celery_app worker --loglevel=info \
     -Q evidence,simulation,default
 ```
 
-**Terminal 3 — Frontend**
+**Terminal 3, Frontend**
 ```bash
 cd frontend
 bun install   # first time only
 bun dev
 ```
 
-> **Note:** For native dev (`bun dev` outside Docker), you need `frontend/.env.local` with Keycloak vars. Run `make env` — it creates both `.env` and `frontend/.env.local` automatically.
+> **Note:** For native dev (`bun dev` outside Docker), you need `frontend/.env.local` with Keycloak vars. Run `make env`, it creates both `.env` and `frontend/.env.local` automatically.
 
 Open http://localhost:3000.
 
 ---
 
-## Option D — Fully offline with Ollama
+## Option D: Fully offline with Ollama
 
 No internet connection required after initial model download.
 
@@ -181,14 +187,14 @@ brew install ollama
 # Linux
 curl -fsSL https://ollama.com/install.sh | sh
 
-# Windows — download installer from https://ollama.com/download
+# Windows, download installer from https://ollama.com/download
 ```
 
 ### Download models (one-time, needs internet)
 
 ```bash
-ollama pull llama3.1:8b      # ~4.7 GB — recommended balance
-ollama pull mistral-nemo     # ~7.1 GB — alternative
+ollama pull llama3.1:8b      # ~4.7 GB, recommended balance
+ollama pull mistral-nemo     # ~7.1 GB, alternative
 ```
 
 ### Configure `.env` for offline mode
@@ -208,10 +214,10 @@ STORAGE_BACKEND=local
 ### Start Ollama + app
 
 ```bash
-# Terminal 1 — Ollama server
+# Terminal 1, Ollama server
 ollama serve
 
-# Terminals 2–4 — same as Option C (backend, worker, frontend)
+# Terminals 2-4, same as Option C (backend, worker, frontend)
 ```
 
 Everything now runs locally. No API keys, no external services, no network calls during simulation.
@@ -246,7 +252,7 @@ The file is sent to Celery for ingestion. Status updates from `pending` → `pro
 
 Click **New Simulation** on the case page:
 - Choose a mode: **Courtroom**, **Deposition**, or **Strategy**
-- Set max turns (10–50 recommended for local testing)
+- Set max turns (10-50 recommended for local testing)
 - Add predefined agents: pick roles, names, personas, and optionally override the LLM provider/model per agent
 
 ### 4. Start the simulation
@@ -279,7 +285,7 @@ make migrate-create
 make migrate-down
 ```
 
-Migrations only apply to SQL backends (PostgreSQL and SQLite). MongoDB and DynamoDB are schema-less — collections/tables are created automatically on first write.
+Migrations only apply to SQL backends (PostgreSQL and SQLite). MongoDB and DynamoDB are schema-less, collections/tables are created automatically on first write.
 
 ---
 
@@ -299,7 +305,7 @@ cd backend && uv run pytest tests/test_agents.py -v
 cd frontend && bun run lint && bun run tsc --noEmit
 ```
 
-Tests use an in-memory SQLite database and mock LLM/vector store responses — no real API calls are made.
+Tests use an in-memory SQLite database and mock LLM/vector store responses, no real API calls are made.
 
 ---
 
@@ -377,7 +383,7 @@ The model is downloaded on first use (~90 MB). Subsequent runs use the cached mo
 
 ### Frontend can't connect to backend
 
-Ensure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `.env`. The Next.js dev server reads this at build time — restart `bun dev` after changing it.
+Ensure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `.env`. The Next.js dev server reads this at build time, restart `bun dev` after changing it.
 
 ### Login/register returns "Could not reach authentication server" (503)
 

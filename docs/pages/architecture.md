@@ -1,3 +1,9 @@
+---
+title: Architecture
+nav_order: 7
+permalink: /architecture/
+---
+
 # Architecture
 
 This document covers system design decisions, data flow, and the reasoning behind key abstractions in Nyayrithm.
@@ -15,6 +21,7 @@ This document covers system design decisions, data flow, and the reasoning behin
 - [Simulation engine](#simulation-engine)
 - [WebSocket streaming](#websocket-streaming)
 - [Infrastructure flexibility](#infrastructure-flexibility)
+- [Frontend & production topology](#frontend--production-topology)
 
 ---
 
@@ -53,7 +60,7 @@ Celery workers (evidence queue + simulation queue)
 
 ## Authentication
 
-Nyayrithm uses **Keycloak 26** as its identity provider. Users never see the Keycloak admin UI — authentication is fully embedded in the Next.js frontend through custom login and registration pages that call Keycloak APIs server-side.
+Nyayrithm uses **Keycloak 26** as its identity provider. Users never see the Keycloak admin UI, authentication is fully embedded in the Next.js frontend through custom login and registration pages that call Keycloak APIs server-side.
 
 ### Flow
 
@@ -99,7 +106,7 @@ Sets cookies + redirects to /dashboard
 
 ### Two-URL pattern
 
-The login/register API routes run **server-side inside the Docker network**. Inside Docker, containers reach each other by service name — not `localhost`. This requires two separate Keycloak URL environment variables:
+The login/register API routes run **server-side inside the Docker network**. Inside Docker, containers reach each other by service name, not `localhost`. This requires two separate Keycloak URL environment variables:
 
 | Variable | Value (Docker) | Value (native `bun dev`) | Used by |
 |----------|---------------|--------------------------|---------|
@@ -112,9 +119,9 @@ The login/register API routes run **server-side inside the Docker network**. Ins
 
 | File | Purpose |
 |------|---------|
-| `frontend/src/app/api/auth/login/route.ts` | `POST /api/auth/login` — Direct Access Grant → httpOnly cookies |
-| `frontend/src/app/api/auth/register/route.ts` | `POST /api/auth/register` — Admin API user creation → auto-login |
-| `frontend/src/app/api/auth/logout/route.ts` | `POST /api/auth/logout` — clears cookies |
+| `frontend/src/app/api/auth/login/route.ts` | `POST /api/auth/login`, Direct Access Grant → httpOnly cookies |
+| `frontend/src/app/api/auth/register/route.ts` | `POST /api/auth/register`, Admin API user creation → auto-login |
+| `frontend/src/app/api/auth/logout/route.ts` | `POST /api/auth/logout`, clears cookies |
 | `frontend/src/middleware.ts` | Protects `/dashboard/*` via cookie check |
 | `infra/keycloak/realm-export.json` | Realm config auto-imported on first Keycloak start |
 | `frontend/.env.local` | Local dev env vars (created by `make env`, git-ignored) |
@@ -127,7 +134,7 @@ Set `NEXT_PUBLIC_DEV_MODE=true` in `.env` to skip all authentication checks in l
 
 ## Data models
 
-All models are **plain Python `@dataclass` objects** — no SQLAlchemy ORM, no Beanie, no ODM. This is intentional:
+All models are **plain Python `@dataclass` objects**: no SQLAlchemy ORM, no Beanie, no ODM. This is intentional:
 
 - The application layer is completely decoupled from the storage layer
 - The same dataclass can be persisted to PostgreSQL (as rows), MongoDB (as documents), SQLite (as rows with JSON blobs), or DynamoDB (as attribute maps)
@@ -144,7 +151,7 @@ Fields typed as `dict` or `list` are stored differently per backend:
 | SQLite | JSON-serialised `TEXT` column |
 | DynamoDB | Native `Map` or `List` attribute |
 
-The adapter translates transparently — the application always sees a Python `dict` or `list`.
+The adapter translates transparently, the application always sees a Python `dict` or `list`.
 
 ### UUIDs
 
@@ -160,7 +167,7 @@ app/db/repository_base.py
     BaseRepository(Generic[T])    ← concrete base with shared helpers
 
 app/db/adapters/
-    postgres.py   PostgresRepository   (SQLAlchemy Core, raw SQL — NOT ORM)
+    postgres.py   PostgresRepository   (SQLAlchemy Core, raw SQL, NOT ORM)
     mongodb.py    MongoRepository      (Motor async pymongo)
     sqlite.py     SQLiteRepository     (aiosqlite)
 
@@ -227,7 +234,7 @@ retrieve(query, case_id, vector_store)
 
 respond(perceived, retrieved, stream_callback)
   ↓  builds system prompt (role template + country + jurisdiction + prior statements)
-  ↓  calls LLMProvider.stream() — emits tokens via stream_callback for WS broadcast
+  ↓  calls LLMProvider.stream(), emits tokens via stream_callback for WS broadcast
   ↓  parses [EVIDENCE:uuid:chunk_idx] citation markers from output
   ↓  returns AgentResponse
 
@@ -287,8 +294,8 @@ Defined in `app/rag/retriever.py` as `ROLE_KNOWLEDGE_RESTRICTIONS`:
 |------|------------|
 | `witness` | Only retrieves evidence in `Evidence.linked_participants` for their agent ID |
 | `accused` | Excludes evidence of type `confession` unless they authored it |
-| `judge` | No restrictions — sees all evidence |
-| `prosecutor` / `defense` | No restrictions — strategy access |
+| `judge` | No restrictions, sees all evidence |
+| `prosecutor` / `defense` | No restrictions, strategy access |
 | `investigator` | No restrictions |
 | `expert_witness` | Filtered to evidence matching their specialisation domain |
 
@@ -411,7 +418,7 @@ Broadcast turn.completed event
 
 ### Celery background execution
 
-Simulations run as Celery tasks in the `simulation` queue. The WebSocket endpoint handles connection management separately — the Celery task calls `broadcast()` which fan-outs to all connected sockets for that simulation ID via the in-memory connection registry.
+Simulations run as Celery tasks in the `simulation` queue. The WebSocket endpoint handles connection management separately, the Celery task calls `broadcast()` which fan-outs to all connected sockets for that simulation ID via the in-memory connection registry.
 
 For production multi-process deployments, replace the in-memory `_connections` dict in `app/api/websockets/simulation_ws.py` with a Redis pub/sub channel.
 
@@ -440,7 +447,7 @@ The frontend `SimulationWebSocket` class (`frontend/src/lib/ws.ts`) implements e
 
 ## Infrastructure flexibility
 
-All service choices are driven by environment variables. The abstraction layers ensure application code never imports a specific driver directly — only the factory functions do.
+All service choices are driven by environment variables. The abstraction layers ensure application code never imports a specific driver directly, only the factory functions do.
 
 ```
 app/db/factory.py          get_repository()     → selected by DB_BACKEND
@@ -451,3 +458,18 @@ app/llm/factory.py         build_llm_provider() → selected by LLM_DEFAULT_PROV
 ```
 
 Adding a new option to any category is a three-step process: implement the protocol, register in the factory, add env var support in `config.py`.
+
+---
+
+## Frontend & production topology
+
+The frontend is Next.js 15 (App Router) with a hand-built design system, **"The Night Court"**: a dual light/dark theme documented in [`DESIGN.md`](https://github.com/Aayush-Joshi-01/nyayrithm/blob/main/DESIGN.md). Theme is set pre-paint by an inline script (localStorage key `nyay-theme`); all motion is CSS-only, with no animation library.
+
+In production the two surfaces are split across domains, resolved by `frontend/src/lib/site.ts`:
+
+| Env var | Purpose |
+|---|---|
+| `NEXT_PUBLIC_MARKETING_URL` | Landing + in-app docs, canonical URLs, sitemap, OG tags |
+| `NEXT_PUBLIC_APP_URL` | The app (`/login`, `/signup`, `/dashboard`). When set, marketing CTAs point at it absolutely; when unset, everything stays same-origin for local dev. |
+
+See [Deployment]({{ '/deployment/' | relative_url }}) for the full topology, CORS, and Keycloak redirect URIs.

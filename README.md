@@ -1,8 +1,18 @@
 # Nyayrithm
 
 > Multi-modal, agent-driven legal reasoning and courtroom simulation platform.
+> _"nyay" (justice) + "rithm" (from algorithm)._
 
-AI agents assume legal roles — judge, prosecutor, defense, witnesses, investigators — and simulate realistic court proceedings using evidence ingested from PDFs, audio recordings, video, and plain text. Every agent thinks, argues, cites evidence, and can spawn specialist sub-agents on the fly.
+A graph of AI agents argues a real case from the evidence you give it. Each agent plays a distinct legal role (judge, prosecutor, defense, plaintiff, accused, witness, investigator, expert witness, or custom) with its own knowledge scope and model, and **every claim is tied to the exact source passage it came from**. Self-hostable, provider-agnostic, and runnable fully offline.
+
+| | |
+|---|---|
+| **Landing & docs** | [nyayrithm.aayushjoshi.dev](https://nyayrithm.aayushjoshi.dev) |
+| **The app** | [nyayrithm.ai.aayushjoshi.dev](https://nyayrithm.ai.aayushjoshi.dev) |
+| **Author** | [Aayush Joshi](https://aayushjoshi.dev) · aayushjoshi.dev@gmail.com |
+| **License** | [MIT](LICENSE) |
+
+> **Status:** pre-launch. There are no customers, testimonials, or benchmarks to cite yet.
 
 ---
 
@@ -15,16 +25,22 @@ AI agents assume legal roles — judge, prosecutor, defense, witnesses, investig
 - [LLM provider guide](#llm-provider-guide)
 - [Embedder options](#embedder-options)
 - [Configuration reference](#configuration-reference)
+- [The interface](#the-interface)
 - [API reference](#api-reference)
 - [WebSocket events](#websocket-events)
 - [Extending the platform](#extending-the-platform)
+- [Deployment](#deployment)
 - [Development commands](#development-commands)
 - [Project structure](#project-structure)
+- [Contributing](#contributing) · [License](#license)
 
-### Platform setup guides
-- [Windows setup](docs/setup-windows.md) — Docker Desktop, native + WSL2, or fully offline Ollama
-- [macOS setup](docs/setup-macos.md) — Docker Desktop, Homebrew native, or Apple Silicon Ollama
-- [Linux setup](docs/setup-linux.md) — Docker Compose, native, systemd services, GPU acceleration
+### Guides
+Browse them rendered at **[aayush-joshi-01.github.io/nyayrithm](https://aayush-joshi-01.github.io/nyayrithm/)**, or in-repo:
+
+- [Windows setup](docs/pages/setup-windows.md) — Docker Desktop, native + WSL2, or fully offline Ollama
+- [macOS setup](docs/pages/setup-macos.md) — Docker Desktop, Homebrew native, or Apple Silicon Ollama
+- [Linux setup](docs/pages/setup-linux.md) — Docker Compose, native, systemd services, GPU acceleration
+- [Architecture](docs/pages/architecture.md) · [LLM providers](docs/pages/llm-providers.md) · [Running locally](docs/pages/running-locally.md) · [**Deployment & the two domains**](docs/pages/deployment.md)
 
 ---
 
@@ -32,7 +48,7 @@ AI agents assume legal roles — judge, prosecutor, defense, witnesses, investig
 
 | Feature | Details |
 |---------|---------|
-| **8 agent roles** | Judge · Prosecutor · Defense · Plaintiff · Accused · Witness · Investigator · Expert Witness |
+| **9 legal roles** | Judge · Prosecutor · Defense · Plaintiff · Accused · Witness · Investigator · Expert Witness · Custom |
 | **Dynamic agent graph** | Agents spawn specialist sub-agents mid-simulation; orchestrator auto-spawns when gaps are detected |
 | **Multi-modal evidence** | Ingest PDF, DOCX, audio (Whisper), video (ffmpeg + Whisper), images |
 | **RAG per role** | Each agent retrieves only the evidence its role is permitted to see |
@@ -48,7 +64,7 @@ AI agents assume legal roles — judge, prosecutor, defense, witnesses, investig
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│  Next.js 15 frontend (App Router + shadcn/ui dark theme) │
+│  Next.js 15 frontend ("The Night Court" — light + dark)  │
 │  SimulationShell · TurnFeed · react-flow AgentGraph      │
 └────────────────────────┬─────────────────────────────────┘
                          │  REST + WebSocket
@@ -72,7 +88,7 @@ AI agents assume legal roles — judge, prosecutor, defense, witnesses, investig
     SQLite            Pinecone       workers
 ```
 
-Extended architecture notes: [`docs/architecture.md`](docs/architecture.md)
+Extended architecture notes: [`docs/pages/architecture.md`](docs/pages/architecture.md)
 
 ---
 
@@ -82,7 +98,7 @@ Extended architecture notes: [`docs/architecture.md`](docs/architecture.md)
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-org/nyayrithm.git
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
 
 # 2. Create .env from template
@@ -249,7 +265,7 @@ GEMINI_API_KEY=AIza...
 ```
 
 Default model: `gemini-flash-lite-latest` (an alias that always resolves to Google's newest flash-lite). For heavier reasoning use `gemini-flash-latest`. The Gemini provider retries `429`/`5xx` with exponential backoff (honouring the server's `retryDelay`), and `SIMULATION_TURN_DELAY_SECONDS` paces the turn loop under the free-tier request-per-minute limit.
-See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/llm-providers.md`](docs/llm-providers.md).
+See [Running locally for free with Gemini](#running-locally-for-free-with-gemini) and [`docs/pages/llm-providers.md`](docs/pages/llm-providers.md).
 
 ### Ollama — fully local, offline
 
@@ -412,6 +428,21 @@ Copy `.env.example` → `.env` then edit. All settings load through `backend/app
 
 ---
 
+## The interface
+
+The frontend design system is **"The Night Court"** — one courtroom rendered as its own interface, in two themes:
+
+- **Light — "in session"** (default): cool institutional paper, north-window daylight.
+- **Dark — "after hours"**: near-black ink lit by one warm pool, for working late.
+
+Brass (`#C88A4A`) and ember (`#FF7A3D`) are identical in both; **ember means _live_** and nothing else. Type is Spectral (the record's voice), Libre Franklin (the room), and JetBrains Mono (line numbers, timestamps, citations). The signature element is the **custody line**: a rule down the left margin of every agent claim, marking it `cited` (tied to an openable passage), `inferred` (on the record, not yet accepted), or `disputed`.
+
+Motion follows one thesis — _"on the record"_: a turn is entered one line at a time, like a court reporter's realtime feed. It is CSS-only (no animation library) with a full `prefers-reduced-motion` path.
+
+Full spec and token reference: [`DESIGN.md`](DESIGN.md).
+
+---
+
 ## API reference
 
 Interactive docs: **http://localhost:8000/docs** (Swagger UI) · **http://localhost:8000/redoc**
@@ -539,6 +570,28 @@ register_provider("myprovider", MyProvider)
 
 ---
 
+## Deployment
+
+Production runs on **two domains**:
+
+| Domain | Serves |
+|---|---|
+| [`nyayrithm.aayushjoshi.dev`](https://nyayrithm.aayushjoshi.dev) | landing (`/`) and docs (`/docs`) — indexed |
+| [`nyayrithm.ai.aayushjoshi.dev`](https://nyayrithm.ai.aayushjoshi.dev) | the app — sign-in, dashboard, proceedings |
+
+Two build-time variables drive the split; every link into the product uses `appHref()` from `frontend/src/lib/site.ts`, and all SEO metadata uses `NEXT_PUBLIC_MARKETING_URL`:
+
+```bash
+NEXT_PUBLIC_MARKETING_URL=https://nyayrithm.aayushjoshi.dev
+NEXT_PUBLIC_APP_URL=https://nyayrithm.ai.aayushjoshi.dev
+```
+
+Leave both unset locally and links stay same-origin. The backend deploys via the manual **Deploy Backend** GitHub Action to AWS ECS (or any runner of the `backend/` image); `infra/terraform/` provisions the AWS side.
+
+Full guide, including the single-vs-split deployment models, Keycloak redirect URIs, CORS, and DNS: [**`docs/pages/deployment.md`**](docs/pages/deployment.md).
+
+---
+
 ## Development commands
 
 ```bash
@@ -592,7 +645,9 @@ nyayrithm/
 │   │   │   ├── api/auth/        Server-side auth routes (login, register, logout)
 │   │   │   ├── dashboard/       Protected dashboard pages
 │   │   │   ├── docs/            In-app documentation page
-│   │   │   └── page.tsx         Landing page (3D globe, agent roles, features)
+│   │   │   ├── page.tsx         Landing (server: metadata + JSON-LD)
+│   │   │   ├── sitemap.ts / robots.ts / manifest.ts / opengraph-image.tsx
+│   │   │   └── (auth), dashboard, docs
 │   │   ├── components/      SimulationShell, TurnFeed, AgentGraph, CitationChip, …
 │   │   ├── hooks/           useSimulationSocket, useCases, useEvidence
 │   │   ├── lib/             api.ts, ws.ts (WebSocket client with auto-reconnect)
@@ -605,12 +660,28 @@ nyayrithm/
 │   ├── keycloak/
 │   │   └── realm-export.json    Keycloak realm auto-imported on first start
 │   └── terraform/           Conditional AWS modules (VPC, RDS, ECS, S3, ElastiCache, …)
-├── docs/
-│   ├── architecture.md      System design decisions + data flow diagrams
-│   ├── llm-providers.md     Full provider configuration guide
-│   └── running-locally.md   Step-by-step local dev without Docker
-├── .github/workflows/       CI (lint, test, docker build, deploy)
+├── docs/                    GitHub Pages site (Jekyll + just-the-docs)
+│   ├── _config.yml          Pages config — served at aayush-joshi-01.github.io/nyayrithm
+│   ├── index.md             Docs home
+│   └── pages/
+│       ├── architecture.md      System design decisions + data flow diagrams
+│       ├── llm-providers.md     Full provider configuration guide
+│       ├── running-locally.md   Step-by-step local dev without Docker
+│       ├── setup-*.md           Per-OS setup guides
+│       └── deployment.md        The two-domain production topology
+├── .github/workflows/       CI (lint, test, docker build), Pages deploy, manual backend deploy
+├── DESIGN.md                "The Night Court" design system
 ├── docker-compose.yml
 ├── .env.example
 └── Makefile
 ```
+
+---
+
+## Contributing
+
+Issues, questions, and PRs are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the lint/test gates, and commit conventions. Security reports go to [`SECURITY.md`](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © [Aayush Joshi](https://aayushjoshi.dev)

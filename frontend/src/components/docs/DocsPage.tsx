@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ChevronRight, TriangleAlert, Check } from "lucide-react"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
 import { cn } from "@/lib/utils"
+import { appHref } from "@/lib/site"
 
 interface NavItem {
   id: string
@@ -143,7 +144,7 @@ export function DocsPage() {
               Home
             </Link>
             <Link
-              href="/signup"
+              href={appHref("/signup")}
               className="rounded-sm bg-ember px-3.5 py-1.5 text-[0.78rem] font-semibold text-[#12100A] transition-colors hover:brightness-105"
             >
               Convene a proceeding
@@ -424,7 +425,7 @@ cd frontend && bun run lint && bun run tsc --noEmit`}</Code>
               Bring a case and read what a well-argued proceeding looks like.
             </p>
             <Link
-              href="/signup"
+              href={appHref("/signup")}
               className="mt-6 inline-block rounded-sm bg-ember px-6 py-2.5 text-[0.85rem] font-semibold text-[#12100A] transition-colors hover:brightness-105"
             >
               Convene a proceeding
