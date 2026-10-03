@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """What a firm's subscription allows, and how much of it has been used this month.
 
 Billing is manual: the platform admin sets a subscription (plan, seats, period, status).
 Everything here only reads that row and the plan it points at, so a payment gateway can
 later write the same rows without changing enforcement.
 """
+
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone

@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """MongoDB access: turns, extracted evidence text and LLM usage events."""
+
+from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any

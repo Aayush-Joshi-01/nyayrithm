@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Platform-operator functions: firms, plans, subscriptions, user directory, activity log.
 
 The operator manages *who has access to what*. It never reads what a firm works on: nothing
 here touches cases' content, evidence, turns or audit payloads, only counts and metadata.
 Every mutation is written to ``admin_events``.
 """
+
+from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any

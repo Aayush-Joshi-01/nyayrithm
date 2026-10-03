@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Startup data.
 
 ``ensure_default_plans`` runs everywhere: a platform with no plans cannot sell anything, and
@@ -9,6 +7,8 @@ the operator edits them in the admin portal afterwards.
 the same accounts as keycloak/realm-dev.json, so both dev auth modes land in a working firm.
 Everything is keyed by fixed ids, so running it twice changes nothing.
 """
+
+from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from uuid import UUID

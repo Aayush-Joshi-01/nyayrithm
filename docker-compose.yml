@@ -112,9 +112,12 @@ services:
 
   # ── One-shot migrations (Postgres schema) ──────────────────────────────────────
   migrate:
+    image: nyayrithm-backend:local   # one image shared by migrate, backend and celery_worker
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        EXTRAS: ${BACKEND_EXTRAS:-}   # local-embeddings adds PyTorch (EMBEDDER_BACKEND=sentence-transformers)
     command: alembic upgrade head
     env_file: .env
     environment: *backend-env
@@ -125,9 +128,12 @@ services:
 
   # ── Backend API ────────────────────────────────────────────────────────────────
   backend:
+    image: nyayrithm-backend:local   # one image shared by migrate, backend and celery_worker
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        EXTRAS: ${BACKEND_EXTRAS:-}   # local-embeddings adds PyTorch (EMBEDDER_BACKEND=sentence-transformers)
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
@@ -150,9 +156,12 @@ services:
 
   # ── Celery worker (evidence + simulation queues) ───────────────────────────────
   celery_worker:
+    image: nyayrithm-backend:local   # one image shared by migrate, backend and celery_worker
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        EXTRAS: ${BACKEND_EXTRAS:-}   # local-embeddings adds PyTorch (EMBEDDER_BACKEND=sentence-transformers)
     command: >
       celery -A app.tasks.celery_app worker
       --loglevel=info

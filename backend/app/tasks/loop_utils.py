@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Helpers for Celery tasks that run their own ``asyncio.run()`` loop.
 
 Every Celery task here spins up a fresh event loop. Async clients cached with
@@ -9,6 +7,7 @@ loop first created them, so a later task reusing them raises
 Clear the caches at the start of each task so every run gets fresh clients.
 """
 
+from __future__ import annotations
 
 def clear_loop_bound_caches() -> None:
     from app.db.mongo import _client as _mongo_client

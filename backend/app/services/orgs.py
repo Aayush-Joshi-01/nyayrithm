@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Firms and their members."""
+
+from __future__ import annotations
 
 import dataclasses
 import re

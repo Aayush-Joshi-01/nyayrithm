@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Inviting attorneys to a firm.
 
 An invite is bound to an email address and carries a random single-use token; only the
 token's SHA-256 is stored. The invitee signs in (or registers) with that email and accepts.
 """
+
+from __future__ import annotations
 
 import hashlib
 import secrets

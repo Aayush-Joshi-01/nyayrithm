@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """One repository class per model. Which store a model lives in is decided here."""
+
+from __future__ import annotations
 
 from app.db.adapters.mongodb import MongoRepository
 from app.db.adapters.postgres import PostgresRepository

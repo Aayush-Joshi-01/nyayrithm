@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Reference prices for estimating what a model call cost (USD per million tokens).
 
 These are *reference* figures to give the operator a sense of spend, not an invoice: vendors
@@ -7,6 +5,8 @@ change prices, add tiers and discount cached input. Anything here can be overrid
 model from the admin portal (stored in MongoDB), and a model with no entry is reported as
 unpriced rather than as free. Local models (Ollama, sentence-transformers) are zero.
 """
+
+from __future__ import annotations
 
 import time
 from dataclasses import dataclass

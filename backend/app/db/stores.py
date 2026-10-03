@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """The two data stores a request or task works with, opened together.
 
 PostgreSQL holds relational, transactional state; MongoDB holds documents and events.
 ``get_repository(model, stores)`` picks the right one per model.
 """
+
+from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager

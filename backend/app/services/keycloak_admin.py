@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """A small client for Keycloak's admin REST API (user enable/disable, role grants)."""
+
+from __future__ import annotations
 
 from typing import Any
 

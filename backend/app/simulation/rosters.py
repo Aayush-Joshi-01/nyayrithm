@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Default agent rosters seeded when a simulation is created.
 
 Each entry is ``{role, name, initial_instruction}``. The provider/model for each
 agent is resolved from ``ROLE_PROVIDER_MAP`` at creation time (see
 ``app/api/v1/simulations.py``), so rosters stay provider-agnostic.
 """
+
+from __future__ import annotations
 
 DEFAULT_ROSTERS: dict[str, list[dict[str, str]]] = {
     "courtroom": [

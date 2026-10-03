@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """LLMOps queries for the admin portal: consumption, cost, latency, errors, quotas, prices.
 
 Everything is read from the ``llm_usage`` collection (one document per model call) and the
 per-firm monthly counters. Costs are *estimates* from the price table; each response says so.
 """
+
+from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any

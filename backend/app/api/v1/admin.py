@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Platform-operator API. Every route needs the ``platform_admin`` realm role.
 
 It manages access and consumption (firms, plans, subscriptions, users, usage); it exposes no
 case, evidence, turn or audit content.
 """
+
+from __future__ import annotations
 
 from datetime import datetime
 from typing import Any

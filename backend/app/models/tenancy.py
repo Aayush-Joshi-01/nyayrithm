@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Firm (tenant) models: organizations, members, invites, plans, subscriptions, usage."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """LLMOps: record every model call (chat, embedding, vision) with who, what and how much.
 
 ``MeteredLLM`` wraps any ``LLMProvider``. Context (which firm, user, simulation and agent
@@ -8,6 +6,8 @@ need no changes. Recording is best-effort: a metering failure is logged and neve
 turn. Each record is a MongoDB document (``llm_usage``) and also bumps the firm's monthly
 counters in Postgres, which the quota checks read.
 """
+
+from __future__ import annotations
 
 import contextlib
 import time

@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Outgoing email over SMTP. Dev points this at Mailpit; production needs real SMTP settings."""
+
+from __future__ import annotations
 
 import smtplib
 from email.message import EmailMessage

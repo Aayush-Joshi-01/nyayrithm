@@ -325,12 +325,15 @@ async def test_overview_totals(client, admin, seed):
 
 
 async def test_system_health_reports_each_component(client, admin, monkeypatch):
-    async def ping(self, *a, **k):
-        return {"ok": 1}
+    # Redis and Celery are made deterministically unreachable (a developer's own stack may be
+    # listening on localhost); the HTTP services answer.
+    def no_redis(*a, **k):
+        raise ConnectionError("redis down")
 
-    # the in-memory Mongo has no ping command; everything else is unreachable in tests
-    monkeypatch.setattr("app.services.system_health._http_ok",
-                        lambda url: (_ for _ in ()).throw(RuntimeError("down")) if False else _ok())
+    monkeypatch.setattr("redis.asyncio.from_url", no_redis)
+    monkeypatch.setattr("app.tasks.celery_app.celery_app.control.inspect",
+                        lambda **kw: type("I", (), {"ping": staticmethod(lambda: None)})())
+    monkeypatch.setattr("app.services.system_health._http_ok", lambda url: _ok())
     body = (await client.get("/api/v1/admin/system", headers=admin)).json()
     names = [c["name"] for c in body["checks"]]
     assert names == ["PostgreSQL", "MongoDB", "Redis", "Qdrant", "Keycloak", "Celery workers",

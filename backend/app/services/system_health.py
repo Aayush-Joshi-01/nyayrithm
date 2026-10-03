@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Health of every component the platform depends on, for the admin portal."""
+
+from __future__ import annotations
 
 import asyncio
 import time
