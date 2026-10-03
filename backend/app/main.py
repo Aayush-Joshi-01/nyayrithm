@@ -11,6 +11,7 @@ from app.api.router import api_router
 from app.api.websockets.simulation_ws import websocket_router
 from app.config import get_settings
 from app.core.events import on_shutdown, on_startup
+from app.core.exceptions import NyayrithmError, nyayrithm_exception_handler
 from app.core.middleware import RequestIDMiddleware
 
 logger = structlog.get_logger()
@@ -34,6 +35,8 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.DEBUG else None,
         lifespan=lifespan,
     )
+
+    app.add_exception_handler(NyayrithmError, nyayrithm_exception_handler)
 
     # ── Exception handler must be registered BEFORE middleware so that
     # unhandled exceptions are converted to a proper Response object

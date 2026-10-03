@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import json
+from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.api.websockets.event_bus import make_broadcast_fn, subscribe
+from app.core.auth import get_verifier
+from app.core.exceptions import NotFoundError
+from app.db.session import get_session
+from app.dependencies import authenticate_token
+from app.services.access import AccessService
 
 logger = structlog.get_logger()
 
@@ -24,9 +30,47 @@ async def _pump_events(websocket: WebSocket, simulation_id: str) -> None:
         await websocket.send_text(json.dumps(frame))
 
 
+# Close codes (4000-4999 are application-defined).
+WS_UNAUTHORIZED = 4401
+WS_FORBIDDEN = 4403
+
+
+async def _authorize(websocket: WebSocket, simulation_id: str) -> int | None:
+    """Return a close code if the socket may not watch this simulation, else None.
+
+    Browsers cannot set an Authorization header on a WebSocket, so the access token
+    comes in the ``token`` query parameter.
+    """
+    try:
+        user = await authenticate_token(
+            websocket.query_params.get("token"), get_verifier()
+        )
+    except HTTPException:
+        return WS_UNAUTHORIZED
+
+    try:
+        UUID(simulation_id)
+    except ValueError:
+        return WS_FORBIDDEN
+
+    gen = get_session()
+    session = await gen.__anext__()
+    try:
+        await AccessService(session, user).simulation(simulation_id)
+    except NotFoundError:
+        return WS_FORBIDDEN
+    finally:
+        await gen.aclose()
+    return None
+
+
 @websocket_router.websocket("/ws/simulations/{simulation_id}")
 async def simulation_websocket(websocket: WebSocket, simulation_id: str):
     await websocket.accept()
+    denied = await _authorize(websocket, simulation_id)
+    if denied is not None:
+        await websocket.close(code=denied)
+        return
     logger.info("ws_connected", simulation_id=simulation_id)
 
     pump = asyncio.create_task(_pump_events(websocket, simulation_id))

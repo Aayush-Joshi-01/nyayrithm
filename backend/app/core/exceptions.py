@@ -23,6 +23,16 @@ class ValidationError(NyayrithmError):
         super().__init__(message, "VALIDATION_ERROR")
 
 
+class ConflictError(NyayrithmError):
+    def __init__(self, message: str):
+        super().__init__(message, "CONFLICT")
+
+
+class PayloadTooLargeError(NyayrithmError):
+    def __init__(self, message: str):
+        super().__init__(message, "PAYLOAD_TOO_LARGE")
+
+
 class StorageError(NyayrithmError):
     def __init__(self, message: str):
         super().__init__(message, "STORAGE_ERROR")
@@ -48,6 +58,8 @@ async def nyayrithm_exception_handler(request: Request, exc: NyayrithmError) -> 
     status_map = {
         "NOT_FOUND": 404,
         "VALIDATION_ERROR": 422,
+        "CONFLICT": 409,
+        "PAYLOAD_TOO_LARGE": 413,
         "STORAGE_ERROR": 500,
         "AGENT_ERROR": 500,
         "SIMULATION_ERROR": 500,
@@ -56,5 +68,5 @@ async def nyayrithm_exception_handler(request: Request, exc: NyayrithmError) -> 
     }
     return JSONResponse(
         status_code=status_map.get(exc.code, 500),
-        content={"error": exc.code, "message": exc.message},
+        content={"error": exc.code, "message": exc.message, "detail": exc.message},
     )

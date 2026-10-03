@@ -36,7 +36,7 @@ async def publish(simulation_id: str, event_type: str, payload: dict[str, Any]) 
     try:
         await client.publish(_channel(simulation_id), message)
     except Exception as exc:  # never let a broadcast failure abort a turn
-        logger.warning("event_bus_publish_failed", error=str(exc), event=event_type)
+        logger.warning("event_bus_publish_failed", error=str(exc), event_type=event_type)
     finally:
         await client.aclose()
 
