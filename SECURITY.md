@@ -16,8 +16,9 @@ You will get an acknowledgement within a few days. Once a fix is available it wi
 
 This is a pre-launch, self-hostable project. When you run it:
 
-- **Change every default credential** before exposing anything to a network: the Keycloak admin (`admin`/`admin`), `KC_BOOTSTRAP_ADMIN_PASSWORD`, `MINIO_ROOT_PASSWORD`, `POSTGRES_PASSWORD`, and the app's `SECRET_KEY`.
-- **Never set `NEXT_PUBLIC_DEV_MODE=true` in production** — it disables the auth wall on `/dashboard/*`.
+- **Change every default credential** before exposing anything to a network: the Keycloak admin, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `MINIO_ROOT_PASSWORD` and the app's `SECRET_KEY`. Start from `.env.example`, never `.env.dev`.
+- **Never enable development authentication in production.** `DEV_AUTH_MODE`, `AUTH_DEV_BYPASS` and `SEED_DEV_DATA` are refused by the backend when `APP_ENV=production`, and `keycloak/realm-dev.json` (static accounts) must never be mounted outside development.
+- Restrict the admin portal (IP allow-list or VPN) and grant `platform_admin` sparingly. The role manages access and usage; it grants no access to firms' case data.
 - Evidence files and vector data are only as private as the storage and database you point the app at.
 
 ## Supported versions

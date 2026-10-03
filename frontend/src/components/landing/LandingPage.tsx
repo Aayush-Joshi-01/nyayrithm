@@ -106,8 +106,8 @@ const CLUSTERS: { label: string; roles: { role: AgentRole; mandate: string }[] }
 ]
 
 const STACK = [
-  "OpenAI", "Anthropic", "Gemini", "Ollama", "PostgreSQL", "SQLite", "MongoDB",
-  "DynamoDB", "Qdrant", "Chroma", "Pinecone", "pgvector", "MinIO", "S3",
+  "OpenAI", "Anthropic", "Gemini", "Ollama", "PostgreSQL", "MongoDB",
+  "Qdrant", "Keycloak", "Docker Compose", "MinIO", "S3",
   "local disk", "sentence-transformers",
 ]
 
@@ -318,10 +318,10 @@ export function LandingPage() {
           </Reveal>
           <Reveal delay={0.08}>
             <p className="mx-auto mt-5 max-w-xl text-[1rem] leading-relaxed text-foreground/60">
-              A free Gemini key and SQLite is enough for a full proceeding on a
-              laptop. Swap the model, the database, the vector store, and the
-              file storage for your own. Each is one environment variable, no
-              code change, no account required.
+              A free Gemini key is enough for a full proceeding on a laptop,
+              and the whole stack is one Docker Compose file. Swap the model, the
+              embedder and the file storage for your own, each one environment
+              variable, no code change.
             </p>
           </Reveal>
         </div>

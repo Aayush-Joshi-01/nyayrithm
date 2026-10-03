@@ -7,17 +7,18 @@ Thanks for taking the time. Nyayrithm is a solo project ([Aayush Joshi](https://
 ```bash
 git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
 cd nyayrithm
-make env        # .env.example -> .env, and frontend/.env.local
-make dev        # postgres, redis, qdrant, minio, keycloak, backend, frontend
-make migrate
+make env        # .env.dev -> .env (add your GEMINI_API_KEY)
+make dev        # the whole stack under Docker Compose, no login needed (make dev-creds for real sign-in)
 ```
 
-`NEXT_PUBLIC_DEV_MODE=true` (the default in `.env.example`) skips the auth wall so you can work on `/dashboard/*` without Keycloak. Platform-specific notes: [`docs/pages/setup-windows.md`](docs/pages/setup-windows.md) · [`docs/pages/setup-macos.md`](docs/pages/setup-macos.md) · [`docs/pages/setup-linux.md`](docs/pages/setup-linux.md).
+Development mode skips the login wall in both portals (`make dev`); `make dev-creds` signs in with static dev accounts. Both seed a "Dev Firm". Tests need no Docker: `make test`. Platform-specific notes: [`docs/pages/setup-windows.md`](docs/pages/setup-windows.md) · [`docs/pages/setup-macos.md`](docs/pages/setup-macos.md) · [`docs/pages/setup-linux.md`](docs/pages/setup-linux.md).
 
 ## Before you open a PR
 
 ```bash
-make lint    # ruff + mypy (backend), eslint + tsc (frontend)
+make lint            # ruff + mypy (backend)
+make lint-frontend   # firm portal
+make lint-admin      # admin portal
 make test    # pytest with coverage
 ```
 

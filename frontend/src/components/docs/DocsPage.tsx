@@ -182,51 +182,52 @@ export function DocsPage() {
 
           <H3>Prerequisites</H3>
           <P>
-            You need <strong className="text-foreground/80">Docker Desktop</strong>,{" "}
-            <strong className="text-foreground/80">Bun 1.1 or newer</strong> (frontend runtime), and{" "}
-            <strong className="text-foreground/80">Python 3.11 or newer</strong> with{" "}
-            <strong className="text-foreground/80">uv</strong> for the backend.
+            You need <strong className="text-foreground/80">Docker</strong> (with Compose) and{" "}
+            <strong className="text-foreground/80">make</strong>. Everything, including the
+            databases and both portals, runs in containers.
           </P>
 
           <Callout type="tip">
-            To run without any cloud account: a free Gemini key plus SQLite, Chroma, and
-            sentence-transformers is a complete stack. See <InlineCode>Configuration</InlineCode> below.
+            A free Gemini key is all you need to run a full proceeding. For no external calls at
+            all, use a local Ollama model with the sentence-transformers embedder.
           </Callout>
 
           <H3>1. Clone and configure</H3>
           <Code lang="bash">{`git clone https://github.com/your-org/nyayrithm.git
 cd nyayrithm
-make env       # copies .env.example to .env
-# open .env and add at least one LLM key`}</Code>
+make env       # creates .env from the development template
+# open .env and add your GEMINI_API_KEY`}</Code>
 
           <H3>2. Start every service</H3>
-          <Code lang="bash">{`make dev
-# postgres, redis, qdrant, minio, keycloak, backend, frontend`}</Code>
+          <Code lang="bash">{`make dev         # open mode: no login in either portal
+make dev-creds   # real sign-in with static development accounts
+# postgres, mongo, redis, qdrant, keycloak, backend, worker, both portals`}</Code>
 
           <Callout type="warn">
             Keycloak takes about 30 seconds on first boot to import the realm. Watch it with{" "}
             <InlineCode>docker compose logs -f keycloak</InlineCode>.
           </Callout>
 
-          <H3>3. Run migrations</H3>
-          <Code lang="bash">{`make migrate`}</Code>
-
           <P>
-            Then open <InlineCode>http://localhost:3000</InlineCode> for the app,{" "}
+            Migrations run automatically. Then open <InlineCode>http://localhost:3000</InlineCode> for
+            the firm portal, <InlineCode>http://localhost:3001</InlineCode> for the admin portal,{" "}
             <InlineCode>http://localhost:8000/docs</InlineCode> for the API, and{" "}
-            <InlineCode>http://localhost:8080</InlineCode> for Keycloak (admin / admin).
+            <InlineCode>http://localhost:8025</InlineCode> for invitation emails (Mailpit).
           </P>
 
           <Callout type="tip">
-            Set <InlineCode>NEXT_PUBLIC_DEV_MODE=true</InlineCode> in <InlineCode>.env</InlineCode> to
-            bypass authentication entirely in local development.
+            <InlineCode>make dev</InlineCode> skips sign-in entirely and starts you as the owner of a
+            seeded &quot;Dev Firm&quot;. <InlineCode>make dev-creds</InlineCode> uses real Keycloak
+            sign-in; the development accounts are listed on the login screen.
           </Callout>
 
           <H2 id="architecture">Architecture</H2>
-          <P>Nyayrithm is a monorepo with four top-level directories:</P>
-          <Code lang="text">{`backend/    FastAPI + Python  agents, RAG, simulation engine
-frontend/   Next.js 15        UI, auth pages, WebSocket client
-infra/      Docker, Terraform, Keycloak realm
+          <P>Nyayrithm is a monorepo, deployed with Docker Compose:</P>
+          <Code lang="text">{`backend/    FastAPI + Python  agents, RAG, simulation engine, legal checks, metering
+frontend/   Next.js 15        the firm portal
+admin/      Next.js 15        the operations console (platform operator)
+keycloak/   realm files        production (no users) and development (static accounts)
+docs/       project documentation site
 .github/    CI/CD workflows`}</Code>
 
           <H3>Backend module tree</H3>
@@ -234,16 +235,19 @@ infra/      Docker, Terraform, Keycloak realm
   agents/       BaseAgent, AgentOrchestrator, AgentGraph, roles/
   llm/          LLMProvider protocol, registry, providers
   rag/          ingester, chunker, embedder, citation parser
-  db/           Repository[T] protocol (no ORM), adapters/
+  db/           Stores(pg, mongo), Repository protocol (no ORM), adapters/
+  services/     access (firm boundary), orgs, invites, entitlements, admin, llmops
+  legal/        jurisdiction packs, citation checker, procedure, audit chain
   vector_db/    VectorStore protocol + factory
   tasks/        Celery tasks (evidence, simulation queues)`}</Code>
 
-          <H3>Database abstraction</H3>
+          <H3>Data stores</H3>
           <P>
-            Models are plain Python dataclasses, not an ORM. The{" "}
-            <InlineCode>Repository[T]</InlineCode> protocol in{" "}
-            <InlineCode>app/db/repository_base.py</InlineCode> is implemented per backend and selected
-            with <InlineCode>DB_BACKEND</InlineCode>: postgres, mongodb, sqlite, or dynamodb.
+            Models are plain Python dataclasses, not an ORM. Data is split by shape: PostgreSQL holds
+            firms, people, plans, cases, proceedings and the audit chain; MongoDB holds turns,
+            extracted evidence text and LLM usage events.{" "}
+            <InlineCode>get_repository(model, stores)</InlineCode> returns the right adapter for each
+            model through the same <InlineCode>Repository</InlineCode> protocol.
           </P>
 
           <H2 id="frontend-stack">Frontend stack</H2>
@@ -320,8 +324,8 @@ bun run tsc --noEmit  # TypeScript check`}</Code>
           <Code lang="text">{`Evidence file
   EvidenceIngester   type-matched: PDF, audio, video, image, text
   TextChunker | TimeWindowChunker
-  Embedder           OpenAI, Cohere, Gemini, sentence-transformers
-  VectorStore        Qdrant, Chroma, Pinecone, pgvector`}</Code>
+  Embedder           OpenAI, Gemini, sentence-transformers
+  VectorStore        Qdrant`}</Code>
 
           <H3>Role-scoped retrieval</H3>
           <P>
@@ -385,14 +389,13 @@ PROVIDER_REGISTRY["myprovider"] = MyProvider
           <H2 id="configuration">Configuration</H2>
           <P>
             Every service choice is an environment variable. Copy{" "}
-            <InlineCode>.env.example</InlineCode> to <InlineCode>.env</InlineCode>. Docker Compose
-            sets hostnames for you; you supply API keys.
+            <InlineCode>make env</InlineCode> creates <InlineCode>.env</InlineCode> from the
+            development template. Docker Compose sets hostnames for you; you supply API keys.
           </P>
           <Code lang="bash">{`# Backend services
-DB_BACKEND=sqlite            # postgres | mongodb | sqlite | dynamodb
-VECTOR_DB_BACKEND=chroma     # qdrant | chroma | pinecone | pgvector
-STORAGE_BACKEND=local        # local | s3 | minio | gcs | azure_blob
-EMBEDDER_BACKEND=sentence-transformers
+VECTOR_DB_BACKEND=qdrant
+STORAGE_BACKEND=local        # local | s3 | minio
+EMBEDDER_BACKEND=gemini      # gemini | openai | sentence-transformers
 
 # LLM
 LLM_DEFAULT_PROVIDER=gemini
@@ -403,10 +406,10 @@ NEXT_PUBLIC_KEYCLOAK_URL=http://localhost:8080
 NEXT_PUBLIC_KEYCLOAK_REALM=nyayrithm
 NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=nyayrithm-app
 
-# Frontend
+# Portals
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_WS_URL=ws://localhost:8000
-NEXT_PUBLIC_DEV_MODE=false`}</Code>
+NEXT_PUBLIC_DEV_AUTH_MODE=off   # open | credentials in development only`}</Code>
 
           <H2 id="extending">Extending the platform</H2>
           <P>

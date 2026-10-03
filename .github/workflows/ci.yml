@@ -28,38 +28,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: nyayrithm_test
-          POSTGRES_USER: nyayrithm
-          POSTGRES_PASSWORD: secret
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-      redis:
-        image: redis:7-alpine
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-    env:
-      DB_BACKEND: postgres
-      DATABASE_URL: postgresql+asyncpg://nyayrithm:secret@localhost:5432/nyayrithm_test
-      CELERY_BROKER_URL: redis://localhost:6379/0
-      CELERY_RESULT_BACKEND: redis://localhost:6379/1
-      STORAGE_BACKEND: local
-      STORAGE_LOCAL_ROOT: /tmp/nyayrithm-test
-      VECTOR_DB_BACKEND: qdrant
-      QDRANT_URL: http://localhost:6333
+    # No services needed: the suite runs on SQLite + an in-memory MongoDB double, a generated
+    # RSA key in place of Keycloak, and mocked Celery. See backend/tests/conftest.py.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -67,18 +37,21 @@ jobs:
           python-version: "3.11"
       - run: pip install uv
       - run: uv pip install --system -e ".[dev]"
-      - run: uv run pytest --cov=app --cov-report=xml -v
+      - run: pytest --cov=app --cov-report=xml -v
       - uses: codecov/codecov-action@v4
         with:
-          file: ./backend/coverage.xml
+          files: ./backend/coverage.xml
 
-  # ─── Frontend ────────────────────────────────────────────────────
+  # ─── Frontends ───────────────────────────────────────────────────
   frontend-lint:
-    name: Frontend Lint & Type Check
+    name: ${{ matrix.app }} Lint & Type Check
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [frontend, admin]
     defaults:
       run:
-        working-directory: frontend
+        working-directory: ${{ matrix.app }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -98,4 +71,11 @@ jobs:
       - name: Build backend image
         run: docker build ./backend -t nyayrithm-backend:ci
       - name: Build frontend image
-        run: docker build ./frontend -t nyayrithm-frontend:ci
+        run: docker build ./frontend --target production -t nyayrithm-frontend:ci
+      - name: Build admin image
+        run: docker build ./admin --target production -t nyayrithm-admin:ci
+      - name: Validate compose files
+        run: |
+          cp .env.dev .env
+          docker compose -f docker-compose.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
