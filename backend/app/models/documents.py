@@ -40,6 +40,7 @@ class LlmUsage:
     output_tokens: int = 0
     estimated: bool = False  # tokens were estimated, not reported by the provider
     cost_usd: float = 0.0
+    priced: bool = True  # False when no price is known for the model (cost is then 0)
     latency_ms: int = 0
     ttft_ms: int | None = None  # time to first token (streaming only)
     status: str = "ok"  # ok | error

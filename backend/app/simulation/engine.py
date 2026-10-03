@@ -11,6 +11,7 @@ from app.agents.orchestrator import AgentOrchestrator
 from app.config import get_settings
 from app.core.exceptions import EntitlementError
 from app.legal.audit import AuditLog
+from app.llm.metering import usage_context
 from app.legal.procedure import ProcedureEngine
 from app.legal.review import LegalReviewer
 from app.models.agent import AgentDefinition
@@ -293,7 +294,11 @@ class SimulationEngine:
             )
 
             try:
-                result = await orchestrator.run_next_turn()
+                with usage_context(
+                    org_id=str(simulation.org_id) if simulation.org_id else None,
+                    user_id=simulation.created_by, simulation_id=simulation_id,
+                ):
+                    result = await orchestrator.run_next_turn()
             except Exception as exc:  # noqa: BLE001
                 # A turn failed even after the provider's own retries. Park the
                 # simulation as 'paused' so it can be resumed (state is on disk).

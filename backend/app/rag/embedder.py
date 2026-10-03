@@ -61,11 +61,13 @@ class TextEmbeddingMixin:
 class OpenAIEmbedder(TextEmbeddingMixin):
     modalities = ["text"]
     dimension = 1536
+    provider_name = "openai"
 
     def __init__(self, model: str = "text-embedding-3-small", api_key: str = "") -> None:
         from openai import AsyncOpenAI
         self._client = AsyncOpenAI(api_key=api_key)
         self._model = model
+        self.model_name = model
         # Update dimension for large model
         if "large" in model:
             self.dimension = 3072
@@ -87,12 +89,14 @@ class GeminiEmbedder(TextEmbeddingMixin):
 
     modalities = ["text"]
     dimension = 768
+    provider_name = "gemini"
 
     # gemini-embedding-001 returns 3072 dims unless outputDimensionality is set,
     # so we always request 768 explicitly to keep vector length stable and match
     # the Qdrant collection created from `self.dimension`.
     def __init__(self, model: str = "gemini-embedding-001", api_key: str = "") -> None:
         self._model = model
+        self.model_name = model
         self._api_key = api_key
 
     async def embed_text(self, text: str) -> list[float]:
@@ -131,9 +135,11 @@ class SentenceTransformerEmbedder(TextEmbeddingMixin):
 
     modalities = ["text"]
     dimension = 384  # all-MiniLM-L6-v2 default
+    provider_name = "local"
 
     def __init__(self, model: str = "all-MiniLM-L6-v2") -> None:
         from sentence_transformers import SentenceTransformer
+        self.model_name = model
         self._model = SentenceTransformer(model)
         self.dimension = self._model.get_sentence_embedding_dimension()
 

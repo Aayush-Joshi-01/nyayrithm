@@ -61,6 +61,7 @@ class GeminiProvider:
         self._model = model
         self._api_key = api_key
         self._client = httpx.AsyncClient(timeout=120.0)
+        self.last_usage: dict[str, int] | None = None  # set after each stream() for metering
 
     @property
     def provider_name(self) -> str:
@@ -152,6 +153,7 @@ class GeminiProvider:
                     await asyncio.sleep(wait)
                     continue
                 resp.raise_for_status()
+                self.last_usage = None
                 async for line in resp.aiter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -162,6 +164,12 @@ class GeminiProvider:
                         data = json.loads(chunk)
                     except json.JSONDecodeError:
                         continue
+                    usage = data.get("usageMetadata")
+                    if usage:
+                        self.last_usage = {
+                            "input_tokens": usage.get("promptTokenCount", 0),
+                            "output_tokens": usage.get("candidatesTokenCount", 0),
+                        }
                     candidates = data.get("candidates") or []
                     if not candidates:
                         continue

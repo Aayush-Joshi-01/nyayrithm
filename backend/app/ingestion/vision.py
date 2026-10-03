@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import io
+import time
 from typing import Protocol
 
 import httpx
@@ -60,6 +61,7 @@ class GeminiVision:
     def __init__(self, api_key: str, model: str = "gemini-flash-lite-latest") -> None:
         self._key = api_key
         self._model = model
+        self.model = model
 
     async def transcribe(self, image_bytes: bytes, mime_type: str) -> str:
         url = (
@@ -89,6 +91,7 @@ class OpenAIVision:
     def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
         self._key = api_key
         self._model = model
+        self.model = model
 
     async def transcribe(self, image_bytes: bytes, mime_type: str) -> str:
         data_url = f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode()}"
@@ -116,6 +119,7 @@ class AnthropicVision:
     def __init__(self, api_key: str, model: str = "claude-haiku-4-5-20251001") -> None:
         self._key = api_key
         self._model = model
+        self.model = model
 
     async def transcribe(self, image_bytes: bytes, mime_type: str) -> str:
         body = {
@@ -171,10 +175,26 @@ async def transcribe_image(
     transcriber = transcriber or get_vision_transcriber()
     if transcriber is None:
         return None, "unavailable"
+    from app.llm.metering import estimate_tokens, record_usage
+
+    started = time.perf_counter()
+    provider = transcriber.name
+    model = getattr(transcriber, "model", "unknown")
     try:
         data, mime = normalize_image(image_bytes, mime_type)
         text = (await transcriber.transcribe(data, mime) or "").strip()
     except Exception as exc:  # noqa: BLE001 - never let OCR sink the whole ingestion
-        logger.warning("vision_transcription_failed", provider=transcriber.name, error=str(exc))
+        logger.warning("vision_transcription_failed", provider=provider, error=str(exc))
+        await record_usage(
+            kind="vision", provider=provider, model=model, input_tokens=0, output_tokens=0,
+            estimated=True, latency_ms=int((time.perf_counter() - started) * 1000),
+            status="error", error_code=type(exc).__name__,
+        )
         return None, "failed"
+    # Providers' image token counts are not read here, so vision calls are always estimates.
+    await record_usage(
+        kind="vision", provider=provider, model=model, input_tokens=0,
+        output_tokens=estimate_tokens(text), estimated=True,
+        latency_ms=int((time.perf_counter() - started) * 1000),
+    )
     return (text or None), ("ok" if text else "failed")

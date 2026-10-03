@@ -12,6 +12,7 @@ class AnthropicProvider:
     def __init__(self, model: str, api_key: str) -> None:
         self._model = model
         self._client = anthropic_sdk.AsyncAnthropic(api_key=api_key)
+        self.last_usage: dict[str, int] | None = None  # set after each stream() for metering
 
     @property
     def provider_name(self) -> str:
@@ -74,5 +75,12 @@ class AnthropicProvider:
             max_tokens=max_tokens,
             **kwargs,
         ) as stream:
+            self.last_usage = None
             async for text in stream.text_stream:
                 yield text
+            try:
+                final = await stream.get_final_message()
+                self.last_usage = {"input_tokens": final.usage.input_tokens,
+                                   "output_tokens": final.usage.output_tokens}
+            except Exception:  # noqa: BLE001 - usage is best-effort
+                self.last_usage = None

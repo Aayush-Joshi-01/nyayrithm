@@ -9,6 +9,7 @@ import structlog
 from app.agents.base import TurnContext, TurnResult
 from app.agents.graph.agent_graph import AgentGraph
 from app.legal.audit import sha256_text
+from app.llm.metering import set_agent_role
 from app.legal.procedure import ProcedureEngine
 from app.legal.review import LegalReviewer, correction_note_from
 from app.models.simulation import Simulation
@@ -249,6 +250,7 @@ class AgentOrchestrator:
             return None
 
         node = self.graph.nodes[agent_id]
+        set_agent_role(node.role)  # LLMOps: attribute this turn's model calls to the role
         context = await self._build_context(agent_id)
 
         if self.broadcast_fn:

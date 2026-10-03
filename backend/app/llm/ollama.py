@@ -21,6 +21,7 @@ class OllamaProvider:
         self._model = model
         self._base_url = (base_url or get_settings().OLLAMA_BASE_URL).rstrip("/")
         self._client = httpx.AsyncClient(timeout=httpx.Timeout(600.0, connect=10.0))
+        self.last_usage: dict[str, int] | None = None  # set after each stream() for metering
 
     @property
     def provider_name(self) -> str:
@@ -76,6 +77,7 @@ class OllamaProvider:
             json=self._payload(messages, temperature, max_tokens, stream=True),
         ) as resp:
             resp.raise_for_status()
+            self.last_usage = None
             async for line in resp.aiter_lines():
                 if not line.strip():
                     continue
@@ -89,4 +91,6 @@ class OllamaProvider:
                 if text:
                     yield text
                 if chunk.get("done"):
+                    self.last_usage = {"input_tokens": chunk.get("prompt_eval_count", 0),
+                                       "output_tokens": chunk.get("eval_count", 0)}
                     return

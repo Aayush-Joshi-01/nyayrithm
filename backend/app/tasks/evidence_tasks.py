@@ -27,6 +27,30 @@ async def _ingest_evidence_async(
     file_path: str,
     mime_type: str,
 ) -> None:
+    """Run ingestion with embedding/vision calls attributed to the evidence's firm."""
+    from app.db.factory import get_repository
+    from app.db.stores import open_stores
+    from app.llm.metering import usage_context
+
+    org_id = user_id = None
+    try:
+        async with open_stores() as stores:
+            ev = await get_repository("evidence", stores).get(evidence_id)
+            if ev:
+                org_id = str(ev.org_id) if ev.org_id else None
+                user_id = ev.uploaded_by
+    except Exception as exc:  # noqa: BLE001 - metering context is optional
+        logger.warning("evidence_usage_context_failed", error=str(exc))
+    with usage_context(org_id=org_id, user_id=user_id):
+        await _ingest_evidence_body(evidence_id, case_id, file_path, mime_type)
+
+
+async def _ingest_evidence_body(
+    evidence_id: str,
+    case_id: str,
+    file_path: str,
+    mime_type: str,
+) -> None:
     from app.ingestion.factory import get_ingester, detect_modality
     from app.rag.indexer import EvidenceIndexer
     from app.vector_db.factory import get_vector_store

@@ -12,6 +12,7 @@ class OpenAIProvider:
     def __init__(self, model: str, api_key: str) -> None:
         self._model = model
         self._client = AsyncOpenAI(api_key=api_key)
+        self.last_usage: dict[str, int] | None = None  # set after each stream() for metering
 
     @property
     def provider_name(self) -> str:
@@ -62,9 +63,16 @@ class OpenAIProvider:
             temperature=temperature,
             max_tokens=max_tokens,
             stream=True,
+            stream_options={"include_usage": True},
             **kwargs,
         ) as stream:
+            self.last_usage = None
             async for chunk in stream:
+                if getattr(chunk, "usage", None):
+                    self.last_usage = {"input_tokens": chunk.usage.prompt_tokens,
+                                       "output_tokens": chunk.usage.completion_tokens}
+                if not chunk.choices:  # the final usage-only chunk has no choices
+                    continue
                 delta = chunk.choices[0].delta.content
                 if delta:
                     yield delta
