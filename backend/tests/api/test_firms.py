@@ -199,3 +199,33 @@ async def test_admins_can_only_remove_attorneys(client, firm, auth_headers):
     assert (await client.delete(f"/api/v1/orgs/{firm}/members/owner", headers=boss)).status_code == 403
     assert (await client.delete(f"/api/v1/orgs/{firm}/members/raj", headers=boss)).status_code == 204
     assert (await client.delete(f"/api/v1/orgs/{firm}/members/raj", headers=boss)).status_code == 404
+
+
+async def test_deleting_a_case_removes_its_files_documents_and_turns(
+    client, seed, firm, auth_headers, db_path, monkeypatch
+):
+    import tests.conftest
+    from app.storage.factory import get_file_storage
+
+    case = seed.case("amy", org=firm)
+    sim = seed.simulation(case, "amy")
+    seed.turn(sim, seed.agent(sim))
+    ev = seed.evidence(case, "amy")
+    tests.conftest._SYNC_MONGO["evidence_content"].insert_one(
+        {"id": "c1", "evidence_id": ev, "case_id": case, "raw_text": "secret"})
+    stored = db_path.parent / "storage" / "cases" / "x" / "a.txt"
+    stored.parent.mkdir(parents=True)
+    stored.write_text("file body")
+    monkeypatch.setattr("app.vector_db.factory.get_vector_store",
+                        lambda: type("S", (), {"drop_collection": staticmethod(lambda c: _noop())})())
+
+    assert (await client.delete(f"/api/v1/cases/{case}",
+                                headers=auth_headers("amy", provision=False))).status_code == 204
+    assert not stored.exists()
+    assert tests.conftest._SYNC_MONGO["turns"].count_documents({"simulation_id": sim}) == 0
+    assert tests.conftest._SYNC_MONGO["evidence_content"].count_documents({"case_id": case}) == 0
+    _ = get_file_storage
+
+
+async def _noop():
+    return None

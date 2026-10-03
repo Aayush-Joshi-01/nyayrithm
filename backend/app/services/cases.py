@@ -81,6 +81,17 @@ class CaseService:
         )
         for sim in sims:
             await get_repository("turn", self.stores).delete_where({"simulation_id": str(sim.id)})
+        # The uploaded files too (best-effort: a storage hiccup must not block the delete).
+        from app.storage.factory import get_file_storage
+
+        files, _ = await get_repository("evidence", self.stores).list(
+            filters={"case_id": cid}, size=1000
+        )
+        for ev in files:
+            try:
+                await get_file_storage().delete(ev.file_path)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("case_file_delete_failed", evidence_id=str(ev.id), error=str(exc))
         try:
             from app.vector_db.factory import get_vector_store
 
