@@ -228,3 +228,35 @@ def test_party_name_normalisation():
     )
     assert normalise_party_name("Union of India & Ors.") == "union india"
     assert normalise_section("65b(4)(a)") == "65B"
+
+
+# ── the matter being argued is not an authority ───────────────────────────────
+def test_naming_the_case_on_trial_is_not_a_citation(pack):
+    text = "We are convened in the matter of State v. Sample (dev), under Section 103 BNS."
+    found = extract_and_verify(text, pack, own_case="State v. Sample (dev)")
+    assert [c.ref for c in found] == ["BNS 103"]
+
+
+def test_other_cases_are_still_checked_when_one_is_on_trial(pack):
+    found = extract_and_verify(
+        "In State v. Sample the accused pleaded; compare Rajesh Verma v. State of Nowhere.",
+        pack, own_case="State v. Sample",
+    )
+    assert [c.status for c in found] == ["unverified"]
+    assert "Rajesh Verma" in found[0].raw
+
+
+def test_a_reporter_citation_is_still_verified_even_for_the_case_on_trial(pack):
+    found = extract_and_verify(
+        "Maneka Gandhi v. Union of India (1978) 1 SCC 248", pack, own_case="Maneka Gandhi v. Union of India"
+    )
+    assert [c.status for c in found] == ["verified"]  # a citation to a reporter is always an authority
+
+
+def test_without_an_own_case_behaviour_is_unchanged(pack):
+    assert len(extract_and_verify("In State v. Sample the court held", pack)) == 1
+
+
+def test_reviewer_threads_the_case_title_through():
+    r = LegalReviewer().review("The matter of State v. Kumar is called.", "India", own_case="State v. Kumar")
+    assert r.status == "clean" and r.citations == []

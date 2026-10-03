@@ -28,8 +28,6 @@ dependencies = [
     "anthropic>=0.40.0",
     # Vector DBs
     "qdrant-client>=1.12.0",
-    # Embeddings (local fallback)
-    "sentence-transformers>=3.3.0",
     # Evidence ingestion
     "pdfplumber>=0.11.0",
     "PyMuPDF>=1.24.0",
@@ -37,7 +35,6 @@ dependencies = [
     "faster-whisper>=1.0.0",
     "ffmpeg-python>=0.2.0",
     "Pillow>=11.0.0",
-    "opencv-python-headless>=4.10.0",
     # Auth
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
@@ -50,6 +47,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Fully-offline embeddings (EMBEDDER_BACKEND=sentence-transformers). Pulls PyTorch, which
+# adds several GB, so it is opt-in: build with `--build-arg EXTRAS=local-embeddings`.
+local-embeddings = [
+    "sentence-transformers>=3.3.0",
+]
 dev = [
     "pytest>=8.3.0",
     "pytest-asyncio>=0.24.0",

@@ -283,8 +283,15 @@ def _make(kind: Kind, raw: str, status: Status, span: tuple[int, int], **kw: Any
                          severity=_SEVERITY[status], **kw)
 
 
-def extract_and_verify(text: str, pack: JurisdictionPack) -> list[LegalCitation]:
-    """All legal citations in ``text`` with a verification verdict each, in text order."""
+def extract_and_verify(
+    text: str, pack: JurisdictionPack, own_case: str | None = None
+) -> list[LegalCitation]:
+    """All legal citations in ``text`` with a verification verdict each, in text order.
+
+    ``own_case`` is the title of the matter being argued: naming it is not citing an
+    authority, so a bare "State v. X" matching it is skipped.
+    """
+    own = normalise_party_name(own_case) if own_case else ""
     results: list[LegalCitation] = []
     seen: set[tuple[Any, ...]] = set()
 
@@ -310,6 +317,9 @@ def extract_and_verify(text: str, pack: JurisdictionPack) -> list[LegalCitation]
         if any(s <= m.start() < e for s, e in cite_spans):
             continue  # already judged through its reporter citation
         name = f"{m.group(1).strip()} v. {m.group(2).strip(' ,')}"
+        norm = normalise_party_name(name)
+        if own and (norm in own or own in norm):
+            continue  # the case being tried, not an authority
         add(_case_name_only(pack, name, m.span()), ("casename", normalise_party_name(name)))
 
     results.sort(key=lambda c: c.span[0])

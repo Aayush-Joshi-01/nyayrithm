@@ -138,7 +138,14 @@ class SentenceTransformerEmbedder(TextEmbeddingMixin):
     provider_name = "local"
 
     def __init__(self, model: str = "all-MiniLM-L6-v2") -> None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise RuntimeError(
+                "EMBEDDER_BACKEND=sentence-transformers needs the optional local-embeddings "
+                "extra (it installs PyTorch). Rebuild with `--build-arg EXTRAS=local-embeddings`, "
+                "or use EMBEDDER_BACKEND=gemini/openai."
+            ) from exc
         self.model_name = model
         self._model = SentenceTransformer(model)
         self.dimension = self._model.get_sentence_embedding_dimension()

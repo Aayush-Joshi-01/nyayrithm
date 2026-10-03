@@ -1,21 +1,19 @@
 FROM python:3.11-slim
 
-# System deps for audio/video processing
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
-    && rm -rf /var/lib/apt/lists/*
+# ffmpeg/ffprobe as static binaries: the apt package drags in ~200 GPU/codec libraries.
+COPY --from=mwader/static-ffmpeg:7.1 /ffmpeg /usr/local/bin/ffmpeg
+COPY --from=mwader/static-ffmpeg:7.1 /ffprobe /usr/local/bin/ffprobe
 
 WORKDIR /app
 
-# Install uv for fast dependency resolution
-RUN pip install uv
+RUN pip install --no-cache-dir uv
+
+# Optional extras, e.g. --build-arg EXTRAS=local-embeddings for offline embeddings (adds PyTorch).
+ARG EXTRAS=""
 
 COPY pyproject.toml .
-RUN uv pip install --system -e ".[dev]"
+RUN if [ -n "$EXTRAS" ]; then uv pip install --system --no-cache -e ".[${EXTRAS}]"; \
+    else uv pip install --system --no-cache -e .; fi
 
 COPY . .
 

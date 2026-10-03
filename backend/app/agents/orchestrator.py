@@ -135,7 +135,8 @@ class AgentOrchestrator:
         if self.reviewer is not None:
             meta = self.case_metadata
             review_dict = self.reviewer.review(
-                result.response.content, meta.get("country"), meta.get("jurisdiction")
+                result.response.content, meta.get("country"), meta.get("jurisdiction"),
+                own_case=meta.get("title"),
             ).to_dict()
         procedure_dict = None
         if self.procedure is not None:

@@ -72,11 +72,14 @@ class LegalReviewer:
     def pack_for(self, country: str | None, jurisdiction: str | None = None) -> JurisdictionPack | None:
         return self.corpus.resolve(country, jurisdiction)
 
-    def review(self, text: str, country: str | None, jurisdiction: str | None = None) -> LegalReview:
+    def review(
+        self, text: str, country: str | None, jurisdiction: str | None = None,
+        own_case: str | None = None,
+    ) -> LegalReview:
         pack = self.pack_for(country, jurisdiction)
         if pack is None:
             return LegalReview(pack_id=None, status="no_pack")
-        citations = extract_and_verify(text, pack)
+        citations = extract_and_verify(text, pack, own_case=own_case)
         if any(c.severity in ("warning", "error") for c in citations):
             status = "flagged"
         elif any(c.severity == "notice" for c in citations):

@@ -34,7 +34,7 @@ does not mean the authority supports the point it is cited for. The checker can 
 citations *wrong*; it can never prove an argument *right*.
 
 **Why is a real case marked "could not be verified"?**
-The bundled Indian pack is a starter index (about seventeen landmark decisions, about seventy
+The bundled Indian pack is a starter index (seventeen landmark decisions, sixty-three
 provisions). A real case outside it is simply not known to the checker. That is a prompt to
 check it, not a finding of error. Larger packs can be loaded.
 

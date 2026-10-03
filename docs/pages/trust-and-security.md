@@ -76,7 +76,7 @@ words themselves.
 | not in the index, or could not be verified | **we cannot tell**. This is not a finding of error |
 | does not exist, or citation does not match | provably wrong: the section number is beyond the act, or the reporter citation belongs to another case |
 
-The bundled Indian pack is a **starter index**: about seventy provisions and seventeen landmark
+The bundled Indian pack is a **starter index**: sixty-three provisions and seventeen landmark
 decisions, with paraphrased summaries. It is not the statute book and not a law report. The
 checker never reads the cited authority or judges whether it supports the point made: a real
 section cited for the wrong proposition is "in the index".
