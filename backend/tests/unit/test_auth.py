@@ -17,17 +17,17 @@ def make_verifier(kc: FakeKeycloak, issuers: set[str] | None = None) -> Keycloak
 
 async def test_valid_token_yields_user(keycloak: FakeKeycloak):
     user = await make_verifier(keycloak).verify(
-        keycloak.token("alice", roles=["user", "admin"])
+        keycloak.token("alice", roles=["user", "platform_admin"])
     )
     assert user.id == "alice"
     assert user.email == "alice@example.test"
-    assert user.is_admin
+    assert user.is_platform_admin
     assert "user" in user.roles
 
 
 async def test_non_admin_is_not_admin(keycloak: FakeKeycloak):
     user = await make_verifier(keycloak).verify(keycloak.token("bob", roles=["user"]))
-    assert not user.is_admin
+    assert not user.is_platform_admin
 
 
 async def test_expired_token_rejected(keycloak: FakeKeycloak):

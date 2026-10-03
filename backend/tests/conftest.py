@@ -169,9 +169,18 @@ def keycloak() -> FakeKeycloak:
 
 
 @pytest.fixture
-def auth_headers(keycloak: FakeKeycloak) -> Callable[..., dict[str, str]]:
-    def make(sub: str = "user-a", **kw) -> dict[str, str]:
-        return {"Authorization": f"Bearer {keycloak.token(sub, **kw)}"}
+def auth_headers(keycloak: FakeKeycloak, seed) -> Callable[..., dict[str, str]]:
+    """Bearer headers for a user. By default the user is given a firm of their own first;
+    pass ``provision=False`` for someone who must not belong to any firm, and ``org=`` to
+    act for a specific firm (X-Org-Id)."""
+    def make(sub: str = "user-a", *, provision: bool = True, org: str | None = None,
+             **kw) -> dict[str, str]:
+        if provision:
+            seed.ensure_user(sub)
+        headers = {"Authorization": f"Bearer {keycloak.token(sub, **kw)}"}
+        if org:
+            headers["X-Org-Id"] = org
+        return headers
     return make
 
 
@@ -251,8 +260,19 @@ async def client(app) -> AsyncIterator[httpx.AsyncClient]:
 
 # ── Seeding helpers (synchronous sqlite3, independent of the app's event loop) ─
 class Seeder:
+    """Direct inserts into the test databases.
+
+    Every user id used by a test is auto-provisioned a firm of their own (an active
+    subscription, one owner membership), so by default two users are in *different* firms.
+    Tests that need a shared firm create it with ``org()`` / ``member()``.
+    """
+
+    NOW = "2026-01-01T00:00:00+00:00"
+
     def __init__(self, path: Path) -> None:
         self.path = path
+        self._plan_ready = False
+        self._firm_of: dict[str, str] = {}
 
     def _insert(self, table: str, **cols) -> str:
         conn = sqlite3.connect(self.path)
@@ -263,24 +283,79 @@ class Seeder:
         conn.close()
         return cols["id"]
 
-    def case(self, owner: str = "user-a", **kw) -> str:
+    # ── firms ─────────────────────────────────────────────────────────────────
+    def plan(self, code: str = "pro", **limits) -> str:
+        conn = sqlite3.connect(self.path)
+        row = conn.execute("SELECT id FROM plans WHERE code = ?", [code]).fetchone()
+        conn.close()
+        if row:
+            return row[0]
+        values = {"seat_limit": 50, "monthly_simulations": 1000, "monthly_tokens": 100_000_000,
+                  "max_turns_per_sim": 500, "storage_mb": 10_000, **limits}
+        return self._insert("plans", id=str(uuid.uuid4()), code=code, name=code.title(),
+                            created_at=self.NOW, **values)
+
+    def org(self, name: str = "Acme LLP", *, status: str = "active", plan: str = "pro",
+            seats: int = 10, sub_status: str = "active", period_end: str | None = None,
+            plan_limits: dict | None = None) -> str:
+        self.plan(plan, **(plan_limits or {}))
+        org_id = self._insert(
+            "organizations", id=str(uuid.uuid4()), name=name,
+            slug=f"{name.lower().replace(' ', '-')}-{uuid.uuid4().hex[:6]}",
+            status=status, created_at=self.NOW, updated_at=self.NOW,
+        )
+        self._insert(
+            "subscriptions", id=str(uuid.uuid4()), org_id=org_id, plan_code=plan,
+            status=sub_status, seats=seats, current_period_start=self.NOW,
+            current_period_end=period_end, created_at=self.NOW, updated_at=self.NOW,
+        )
+        return org_id
+
+    def member(self, org_id: str, user_id: str, role: str = "attorney",
+               status: str = "active") -> str:
+        self._firm_of.setdefault(user_id, org_id)
+        return self._insert(
+            "memberships", id=str(uuid.uuid4()), org_id=org_id, user_id=user_id,
+            email=f"{user_id}@example.test", role=role, display_name=user_id,
+            status=status, created_at=self.NOW,
+        )
+
+    def ensure_user(self, user_id: str) -> str:
+        """The firm this user belongs to, creating a personal one on first use."""
+        if user_id not in self._firm_of:
+            conn = sqlite3.connect(self.path)
+            row = conn.execute(
+                "SELECT org_id FROM memberships WHERE user_id = ? AND status = 'active'",
+                [user_id]).fetchone()
+            conn.close()
+            if row:
+                self._firm_of[user_id] = row[0]
+            else:
+                self.member(self.org(f"Firm of {user_id}"), user_id, "owner")
+        return self._firm_of[user_id]
+
+    # ── case data ─────────────────────────────────────────────────────────────
+    def case(self, owner: str = "user-a", org: str | None = None, **kw) -> str:
         return self._insert(
             "cases", id=str(uuid.uuid4()), title=kw.pop("title", "State v. Test"),
-            country="India", created_by=owner,
-            created_at="2026-01-01T00:00:00+00:00", updated_at="2026-01-01T00:00:00+00:00", **kw,
+            country="India", created_by=owner, org_id=org or self.ensure_user(owner),
+            created_at=self.NOW, updated_at=self.NOW, **kw,
         )
 
     def simulation(self, case_id: str, owner: str = "user-a", **kw) -> str:
+        conn = sqlite3.connect(self.path)
+        (org_id,) = conn.execute("SELECT org_id FROM cases WHERE id = ?", [case_id]).fetchone()
+        conn.close()
         return self._insert(
             "simulations", id=str(uuid.uuid4()), case_id=case_id, title="Sim", created_by=owner,
-            created_at="2026-01-01T00:00:00+00:00", updated_at="2026-01-01T00:00:00+00:00", **kw,
+            org_id=org_id, created_at=self.NOW, updated_at=self.NOW, **kw,
         )
 
     def agent(self, sim_id: str, role: str = "judge", **kw) -> str:
         return self._insert(
             "agent_definitions", id=str(uuid.uuid4()), simulation_id=sim_id, role=role,
             name=kw.pop("name", "Agent"), llm_provider="gemini", llm_model="m",
-            spawned_at="2026-01-01T00:00:00+00:00", **kw,
+            spawned_at=self.NOW, **kw,
         )
 
     def turn(self, sim_id: str, agent_id: str, number: int = 0, content: str = "Hello",
@@ -297,10 +372,13 @@ class Seeder:
         return turn_id
 
     def evidence(self, case_id: str, owner: str = "user-a", **kw) -> str:
+        conn = sqlite3.connect(self.path)
+        (org_id,) = conn.execute("SELECT org_id FROM cases WHERE id = ?", [case_id]).fetchone()
+        conn.close()
         return self._insert(
             "evidence", id=str(uuid.uuid4()), case_id=case_id, title="Exhibit A",
             evidence_type="text", file_path="cases/x/a.txt", mime_type="text/plain",
-            uploaded_by=owner, created_at="2026-01-01T00:00:00+00:00", **kw,
+            uploaded_by=owner, org_id=org_id, created_at=self.NOW, **kw,
         )
 
 

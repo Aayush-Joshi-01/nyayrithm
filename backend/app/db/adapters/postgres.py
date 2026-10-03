@@ -34,6 +34,7 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
 
     table_name: str
     model_cls: type[T]
+    default_order: str = "created_at DESC"
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -67,7 +68,7 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
         order_by: str | None = None,
     ) -> tuple[list[T], int]:
         where, params = self._build_where(filters or {})
-        order = f"ORDER BY {order_by}" if order_by else "ORDER BY created_at DESC"
+        order = f"ORDER BY {order_by}" if order_by else f"ORDER BY {self.default_order}"
         offset = (page - 1) * size
 
         count_result = await self.session.execute(

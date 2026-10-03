@@ -164,11 +164,15 @@ async def test_a_simulation_cannot_be_reached_through_a_different_case_or_user(
     assert (await client.get(f"/api/v1/agents/{a_agent}", headers=auth_headers("user-a"))).status_code == 200
 
 
-async def test_admin_role_can_read_but_lists_stay_personal(client, world, auth_headers):
-    admin = auth_headers("root", roles=["user", "admin"])
-    assert (await client.get(f"/api/v1/cases/{world.case}", headers=admin)).status_code == 200
-    listing = (await client.get("/api/v1/cases/", headers=admin)).json()
-    assert listing["total"] == 0
+async def test_platform_admin_has_no_access_to_firm_data(client, world, auth_headers, seed):
+    """The operator role grants nothing inside a firm: no admin cross-tenant reads."""
+    # not in any firm -> no workspace at all
+    nofirm = auth_headers("root", roles=["user", "platform_admin"], provision=False)
+    assert (await client.get(f"/api/v1/cases/{world.case}", headers=nofirm)).status_code == 403
+    admin = auth_headers("root", roles=["user", "platform_admin", "admin"])
+    # even once in their own firm, someone else's case is invisible
+    assert (await client.get(f"/api/v1/cases/{world.case}", headers=admin)).status_code == 404
+    assert (await client.get("/api/v1/cases/", headers=admin)).json()["total"] == 0
 
 
 async def test_forged_expired_and_foreign_tokens_are_rejected(client, world, keycloak):

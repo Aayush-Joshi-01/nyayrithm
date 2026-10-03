@@ -23,8 +23,10 @@ from app.models.tenancy import (
 from app.models.turn import Turn
 
 
-def _pg(name: str, table: str, model: type) -> type:
-    return type(name, (PostgresRepository,), {"table_name": table, "model_cls": model})
+def _pg(name: str, table: str, model: type, default_order: str = "created_at DESC") -> type:
+    return type(name, (PostgresRepository,), {
+        "table_name": table, "model_cls": model, "default_order": default_order,
+    })
 
 
 def _mongo(name: str, collection: str, model: type) -> type:
@@ -39,7 +41,8 @@ PG_REPOSITORIES: dict[str, type] = {
     "plan": _pg("PlanRepository", "plans", Plan),
     "subscription": _pg("SubscriptionRepository", "subscriptions", Subscription),
     "case_member": _pg("CaseMemberRepository", "case_members", CaseMember),
-    "usage_counter": _pg("UsageCounterRepository", "usage_counters", UsageCounter),
+    "usage_counter": _pg("UsageCounterRepository", "usage_counters", UsageCounter,
+                         "updated_at DESC"),
     "admin_event": _pg("AdminEventRepository", "admin_events", AdminEvent),
     "case": _pg("CaseRepository", "cases", Case),
     "simulation": _pg("SimulationRepository", "simulations", Simulation),

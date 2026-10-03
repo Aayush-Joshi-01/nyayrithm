@@ -9,10 +9,12 @@ import structlog
 from app.agents.graph.agent_graph import AgentGraph
 from app.agents.orchestrator import AgentOrchestrator
 from app.config import get_settings
+from app.core.exceptions import EntitlementError
 from app.legal.audit import AuditLog
 from app.legal.procedure import ProcedureEngine
 from app.legal.review import LegalReviewer
 from app.models.agent import AgentDefinition
+from app.services.entitlements import EntitlementService
 from app.models.simulation import Simulation
 from app.models.turn import Turn
 from app.vector_db.factory import get_vector_store
@@ -224,6 +226,36 @@ class SimulationEngine:
             if simulation.current_turn >= max_turns:
                 return "done"
 
+            # The firm's plan is checked before every turn, so a run stops the moment the
+            # monthly token budget is gone (or the subscription lapses) rather than at the end.
+            if simulation.org_id:
+                ent = EntitlementService(stores)
+                reason = None
+                try:
+                    await ent.require_active(simulation.org_id)
+                    if await ent.tokens_exhausted(simulation.org_id):
+                        reason = "quota_exceeded"
+                except EntitlementError:
+                    reason = "subscription_inactive"
+                if reason:
+                    await sim_repo.update(simulation_id, {"status": "paused"})
+                    await AuditLog(stores).append(
+                        simulation_id, "simulation.paused", "system",
+                        {"reason": reason, "at_turn": simulation.current_turn},
+                    )
+                    if broadcast_fn:
+                        message = (
+                            "The firm's monthly token allowance has been used up."
+                            if reason == "quota_exceeded"
+                            else "The firm's subscription is not active."
+                        )
+                        await broadcast_fn("quota.exceeded", {"reason": reason, "message": message})
+                        await broadcast_fn("simulation.paused", {
+                            "simulation_id": simulation_id,
+                            "turn_number": simulation.current_turn,
+                        })
+                    return "stop"
+
             agent_defs, _ = await agent_repo.list(
                 filters={"simulation_id": str(simulation.id)},
                 size=200, order_by="spawned_at",
@@ -284,6 +316,8 @@ class SimulationEngine:
                 "current_turn": orchestrator.simulation.current_turn,
                 "updated_at": datetime.now(timezone.utc),
             })
+            if simulation.org_id:
+                await EntitlementService(stores).add_usage(simulation.org_id, turns=1)
             return "continue"
 
         while True:

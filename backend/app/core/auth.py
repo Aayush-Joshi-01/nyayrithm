@@ -24,10 +24,18 @@ class AuthenticatedUser:
     email: str | None = None
     username: str | None = None
     roles: frozenset[str] = field(default_factory=frozenset)
+    # The firm this request acts for; filled in by get_org_user from the user's membership.
+    org_id: str | None = None
+    org_role: str | None = None  # owner | admin | attorney
 
     @property
-    def is_admin(self) -> bool:
-        return "admin" in self.roles
+    def is_platform_admin(self) -> bool:
+        """Platform operator (Keycloak realm role). Never grants access to firm data."""
+        return "platform_admin" in self.roles
+
+    @property
+    def is_firm_manager(self) -> bool:
+        return self.org_role in ("owner", "admin")
 
 
 async def _fetch_jwks() -> dict[str, Any]:

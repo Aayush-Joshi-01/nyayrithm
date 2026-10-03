@@ -4,6 +4,7 @@ import dataclasses
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
 from app.api.deps import get_case_service
 from app.schemas.case import CaseCreate, CaseListResponse, CaseResponse, CaseUpdate
@@ -47,3 +48,23 @@ async def update_case(
 @router.delete("/{case_id}", status_code=204)
 async def delete_case(case_id: UUID, svc: CaseService = Depends(get_case_service)):
     await svc.delete(case_id)
+
+
+class ShareIn(BaseModel):
+    user_id: str
+
+
+@router.get("/{case_id}/members")
+async def list_case_members(case_id: UUID, svc: CaseService = Depends(get_case_service)):
+    return await svc.members(case_id)
+
+
+@router.post("/{case_id}/members", status_code=201)
+async def share_case(case_id: UUID, body: ShareIn, svc: CaseService = Depends(get_case_service)):
+    await svc.share(case_id, body.user_id)
+    return {"status": "shared"}
+
+
+@router.delete("/{case_id}/members/{user_id}", status_code=204)
+async def unshare_case(case_id: UUID, user_id: str, svc: CaseService = Depends(get_case_service)):
+    await svc.unshare(case_id, user_id)

@@ -18,6 +18,7 @@ from app.ingestion.factory import detect_modality
 from app.models.evidence import Evidence
 from app.schemas.turn import SearchResultSchema
 from app.services.access import AccessService
+from app.services.entitlements import EntitlementService
 from app.storage.factory import get_file_storage
 
 logger = structlog.get_logger()
@@ -48,9 +49,11 @@ def guess_type(mime: str) -> str:
 
 class EvidenceService:
     def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
+        self.stores = stores
         self.user = user
         self.repo = get_repository("evidence", stores)
         self.access = AccessService(stores, user)
+        self.ent = EntitlementService(stores)
 
     async def upload(
         self,
@@ -61,7 +64,8 @@ class EvidenceService:
         title: str = "",
         description: str = "",
     ) -> Evidence:
-        await self.access.case(case_id)
+        case = await self.access.case(case_id)
+        await self.ent.check_storage(self.access.org_id, len(content))
 
         max_bytes = get_settings().MAX_UPLOAD_MB * 1024 * 1024
         if not content:
@@ -86,6 +90,7 @@ class EvidenceService:
             mime_type=mime_type,
             modality=detect_modality(mime_type),
             uploaded_by=self.user.id,
+            org_id=case.org_id,
             status="pending",
         ))
         self._queue_ingestion(evidence.id, case_id, key, mime_type)
@@ -122,6 +127,9 @@ class EvidenceService:
             logger.warning(
                 "evidence_file_delete_failed", evidence_id=str(evidence_id), error=str(exc)
             )
+        await get_repository("evidence_content", self.stores).delete_where(
+            {"evidence_id": str(evidence_id)}
+        )
         await self.repo.delete(str(evidence_id))
 
     async def reindex(self, case_id: UUID, evidence_id: UUID) -> None:

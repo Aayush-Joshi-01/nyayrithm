@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
 from app.core.auth import AuthenticatedUser
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ForbiddenError, NoOrganizationError, NotFoundError
 from app.db.factory import get_repository
 from app.db.stores import Stores
 from app.models.agent import AgentDefinition
@@ -14,11 +13,13 @@ from app.models.simulation import Simulation
 
 
 class AccessService:
-    """Resolves resources on behalf of a user and enforces ownership.
+    """Resolves resources on behalf of a user acting for a firm, and enforces who sees what.
 
-    A case belongs to the user who created it; simulations, evidence, agents and
-    turns inherit access from their case. Anything the user does not own is reported
-    as *not found* (404) rather than forbidden, so ids cannot be probed.
+    Cases belong to a firm. Inside it, owners and admins see every case; an attorney sees
+    the cases they created plus those explicitly shared with them. Simulations, evidence,
+    agents and turns inherit access from their case. Anything the caller may not see is
+    reported as *not found* (404), so ids cannot be probed, and a platform administrator
+    has no access to case data at all.
     """
 
     def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
@@ -28,13 +29,38 @@ class AccessService:
     def _repo(self, model: str):
         return get_repository(model, self.stores)
 
-    def _can_see(self, case: Case) -> bool:
-        return self.user.is_admin or case.created_by == self.user.id
+    @property
+    def org_id(self) -> str:
+        if not self.user.org_id:
+            raise NoOrganizationError()
+        return self.user.org_id
+
+    async def _is_shared_with_me(self, case_id: UUID | str) -> bool:
+        return await self._repo("case_member").count(
+            {"case_id": str(case_id), "user_id": self.user.id}
+        ) > 0
+
+    async def _can_see(self, case: Case) -> bool:
+        if not self.user.org_id or str(case.org_id) != self.user.org_id:
+            return False
+        if self.user.is_firm_manager or case.created_by == self.user.id:
+            return True
+        return await self._is_shared_with_me(case.id)
+
+    def can_manage(self, case: Case) -> bool:
+        """Delete or share a case: firm owners/admins, or the attorney who created it."""
+        return self.user.is_firm_manager or case.created_by == self.user.id
 
     async def case(self, case_id: UUID | str) -> Case:
         case = await self._repo("case").get(str(case_id))
-        if case is None or not self._can_see(case):
+        if case is None or not await self._can_see(case):
             raise NotFoundError("Case", str(case_id))
+        return case
+
+    async def managed_case(self, case_id: UUID | str) -> Case:
+        case = await self.case(case_id)
+        if not self.can_manage(case):
+            raise ForbiddenError("Only the case's creator or a firm admin can do this.")
         return case
 
     async def simulation(self, sim_id: UUID | str) -> Simulation:

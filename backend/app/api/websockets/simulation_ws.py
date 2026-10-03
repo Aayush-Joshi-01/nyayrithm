@@ -9,10 +9,11 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.api.websockets.event_bus import make_broadcast_fn, subscribe
 from app.core.auth import get_verifier
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import ForbiddenError, NotFoundError
 from app.db.stores import open_stores
 from app.dependencies import authenticate_token
 from app.services.access import AccessService
+from app.services.orgs import resolve_org_user
 
 logger = structlog.get_logger()
 
@@ -55,8 +56,9 @@ async def _authorize(websocket: WebSocket, simulation_id: str) -> int | None:
 
     try:
         async with open_stores() as stores:
-            await AccessService(stores, user).simulation(simulation_id)
-    except NotFoundError:
+            org_user = await resolve_org_user(stores, user, websocket.query_params.get("org"))
+            await AccessService(stores, org_user).simulation(simulation_id)
+    except (NotFoundError, ForbiddenError):
         return WS_FORBIDDEN
     return None
 

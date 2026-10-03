@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import health, cases, evidence, simulations, agents, turns, legal
+from app.api.v1 import health, cases, evidence, simulations, agents, turns, legal, orgs
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])
@@ -10,3 +10,4 @@ api_router.include_router(simulations.router, tags=["simulations"])
 api_router.include_router(agents.router, prefix="/agents", tags=["agents"])
 api_router.include_router(turns.router, tags=["turns"])
 api_router.include_router(legal.router, tags=["legal"])
+api_router.include_router(orgs.router, tags=["firms"])

@@ -14,6 +14,7 @@ from app.models.simulation import Simulation
 from app.schemas.agent import AgentCreate
 from app.schemas.simulation import SimulationCreate
 from app.services.access import AccessService
+from app.services.entitlements import EntitlementService
 
 _STARTABLE = ("draft", "paused", "failed")
 
@@ -33,6 +34,7 @@ class SimulationService:
         self.agents = get_repository("agent", stores)
         self.access = AccessService(stores, user)
         self.audit = AuditLog(stores)
+        self.ent = EntitlementService(stores)
 
     async def _record(
         self, sim_id: UUID, event: str, payload: dict[str, Any] | None = None
@@ -41,7 +43,8 @@ class SimulationService:
 
     # ── simulations ───────────────────────────────────────────────────────────
     async def create(self, case_id: UUID, body: SimulationCreate) -> Simulation:
-        await self.access.case(case_id)
+        case = await self.access.case(case_id)
+        await self.ent.check_can_create_simulation(self.access.org_id, body.max_turns)
         sim = await self.sims.create(Simulation(
             case_id=case_id,  # type: ignore[arg-type]
             title=body.title,
@@ -49,6 +52,7 @@ class SimulationService:
             max_turns=body.max_turns,
             config=body.config,
             created_by=self.user.id,
+            org_id=case.org_id,
         ))
         await self._record(sim.id, "simulation.created", {
             "mode": body.mode, "max_turns": body.max_turns, "title": body.title,
@@ -85,6 +89,10 @@ class SimulationService:
         sim = await self.access.simulation(sim_id)
         if sim.status not in _STARTABLE:
             raise ConflictError(f"Cannot start simulation in status '{sim.status}'")
+        first_start = sim.status == "draft"
+        await self.ent.check_can_start_simulation(self.access.org_id, first_start=first_start)
+        if first_start:
+            await self.ent.add_usage(self.access.org_id, simulations=1)
         await self.sims.update(str(sim_id), {
             "status": "running",
             "started_at": datetime.now(timezone.utc),
@@ -126,6 +134,7 @@ class SimulationService:
 
     async def clone(self, sim_id: UUID) -> Simulation:
         src = await self.access.simulation(sim_id)
+        await self.ent.check_can_create_simulation(self.access.org_id, src.max_turns)
         created = await self.sims.create(Simulation(
             case_id=src.case_id,
             title=f"{src.title} (copy)",
@@ -133,6 +142,7 @@ class SimulationService:
             max_turns=src.max_turns,
             config={**src.config, "seed_default_agents": False},
             created_by=self.user.id,
+            org_id=src.org_id,
         ))
 
         # Copy the predefined roster (not spawned agents or turns).
