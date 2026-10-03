@@ -72,6 +72,11 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+# Prompt text, regexes and citation messages read better unwrapped.
+"app/legal/**" = ["E501"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = false
@@ -80,6 +85,15 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+filterwarnings = [
+    # sqlite3's implicit datetime adapter (used by the SQLite test database).
+    "ignore:The default datetime adapter:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["app"]
+# SQLAlchemy's async driver runs on greenlets; without this, lines after an await go unmeasured.
+concurrency = ["greenlet", "thread"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
