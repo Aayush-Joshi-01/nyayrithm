@@ -1,0 +1,64 @@
+{
+  "realm": "nyayrithm",
+  "enabled": true,
+  "displayName": "Nyayrithm",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 900,
+  "clients": [
+    {
+      "clientId": "nyayrithm-app",
+      "name": "Nyayrithm App (firm portal)",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${APP_URL:http://localhost:3000}/*"
+      ],
+      "webOrigins": [
+        "${APP_URL:http://localhost:3000}"
+      ],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "nyayrithm-admin",
+      "name": "Nyayrithm Admin Portal",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${ADMIN_URL:http://localhost:3001}/*"
+      ],
+      "webOrigins": [
+        "${ADMIN_URL:http://localhost:3001}"
+      ],
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Regular platform user"
+      },
+      {
+        "name": "platform_admin",
+        "description": "Platform operator: firms, plans, usage. Never reads case content."
+      }
+    ]
+  },
+  "defaultRoles": [
+    "user"
+  ],
+  "smtpServer": {}
+}
