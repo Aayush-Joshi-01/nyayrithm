@@ -112,6 +112,17 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
         await self.session.commit()
         return result.rowcount > 0
 
+    async def delete_where(self, filters: dict[str, Any]) -> int:
+        """Delete every row matching all ``filters``; returns the number removed."""
+        if not filters:
+            raise ValueError("delete_where requires at least one filter")
+        where, params = self._build_where(filters)
+        result = await self.session.execute(
+            text(f"DELETE FROM {self.table_name}{where}"), params
+        )
+        await self.session.commit()
+        return result.rowcount or 0
+
     async def query(self, raw_query: Any, **kwargs) -> list[T]:
         result = await self.session.execute(text(str(raw_query)), kwargs)
         return [self._row_to_model(r) for r in result.fetchall()]

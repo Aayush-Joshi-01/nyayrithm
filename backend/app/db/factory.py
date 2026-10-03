@@ -11,7 +11,7 @@ def get_repository(model: str, session: Any) -> BaseRepository:
     Factory that returns the correct repository adapter for the configured DB backend.
 
     Args:
-        model: one of "case", "evidence", "agent", "simulation", "turn"
+        model: one of "case", "evidence", "agent", "simulation", "turn", "audit"
         session: AsyncSession (SQL) or AsyncIOMotorDatabase (Mongo)
     """
     settings = get_settings()
@@ -22,6 +22,7 @@ def get_repository(model: str, session: Any) -> BaseRepository:
     from app.db.repositories.agent_repo import AgentPostgresRepository, AgentMongoRepository
     from app.db.repositories.simulation_repo import SimulationPostgresRepository, SimulationMongoRepository
     from app.db.repositories.turn_repo import TurnPostgresRepository, TurnMongoRepository
+    from app.db.repositories.audit_repo import AuditPostgresRepository, AuditMongoRepository
 
     SQL_MAP = {
         "case": CasePostgresRepository,
@@ -29,6 +30,7 @@ def get_repository(model: str, session: Any) -> BaseRepository:
         "agent": AgentPostgresRepository,
         "simulation": SimulationPostgresRepository,
         "turn": TurnPostgresRepository,
+        "audit": AuditPostgresRepository,
     }
     MONGO_MAP = {
         "case": CaseMongoRepository,
@@ -36,6 +38,7 @@ def get_repository(model: str, session: Any) -> BaseRepository:
         "agent": AgentMongoRepository,
         "simulation": SimulationMongoRepository,
         "turn": TurnMongoRepository,
+        "audit": AuditMongoRepository,
     }
 
     if backend in ("postgres", "sqlite"):

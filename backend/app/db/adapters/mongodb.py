@@ -60,8 +60,15 @@ class MongoRepository(BaseRepository[T], Generic[T]):
     ) -> tuple[list[T], int]:
         query = filters or {}
         total = await self.col.count_documents(query)
-        sort_field = order_by or "created_at"
-        cursor = self.col.find(query).sort(sort_field, -1).skip((page - 1) * size).limit(size)
+        # Same convention as the SQL adapter: "field" ascends, "field DESC" descends, and
+        # no order_by means newest first.
+        if order_by:
+            parts = order_by.split()
+            sort_field = parts[0]
+            direction = -1 if len(parts) > 1 and parts[1].upper() == "DESC" else 1
+        else:
+            sort_field, direction = "created_at", -1
+        cursor = self.col.find(query).sort(sort_field, direction).skip((page - 1) * size).limit(size)
         docs = await cursor.to_list(length=size)
         return [self._doc_to_model(d) for d in docs], total
 
@@ -81,6 +88,13 @@ class MongoRepository(BaseRepository[T], Generic[T]):
     async def delete(self, id: str) -> bool:
         result = await self.col.delete_one({"id": id})
         return result.deleted_count > 0
+
+    async def delete_where(self, filters: dict[str, Any]) -> int:
+        """Delete every document matching all ``filters``; returns the number removed."""
+        if not filters:
+            raise ValueError("delete_where requires at least one filter")
+        result = await self.col.delete_many(filters)
+        return result.deleted_count
 
     async def query(self, raw_query: Any, **kwargs) -> list[T]:
         cursor = self.col.find(raw_query)
