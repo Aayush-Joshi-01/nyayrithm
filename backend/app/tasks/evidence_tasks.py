@@ -27,12 +27,37 @@ async def _ingest_evidence_async(
     file_path: str,
     mime_type: str,
 ) -> None:
+    """Run ingestion with embedding/vision calls attributed to the evidence's firm."""
+    from app.db.factory import get_repository
+    from app.db.stores import open_stores
+    from app.llm.metering import usage_context
+
+    org_id = user_id = None
+    try:
+        async with open_stores() as stores:
+            ev = await get_repository("evidence", stores).get(evidence_id)
+            if ev:
+                org_id = str(ev.org_id) if ev.org_id else None
+                user_id = ev.uploaded_by
+    except Exception as exc:  # noqa: BLE001 - metering context is optional
+        logger.warning("evidence_usage_context_failed", error=str(exc))
+    with usage_context(org_id=org_id, user_id=user_id):
+        await _ingest_evidence_body(evidence_id, case_id, file_path, mime_type)
+
+
+async def _ingest_evidence_body(
+    evidence_id: str,
+    case_id: str,
+    file_path: str,
+    mime_type: str,
+) -> None:
     from app.ingestion.factory import get_ingester, detect_modality
     from app.rag.indexer import EvidenceIndexer
     from app.vector_db.factory import get_vector_store
     from app.storage.factory import get_file_storage
-    from app.db.session import get_session
     from app.db.factory import get_repository
+    from app.db.stores import open_stores
+    from app.models.documents import EvidenceContent
 
     log = logger.bind(evidence_id=evidence_id, case_id=case_id)
     log.info("evidence_ingestion_started")
@@ -61,13 +86,22 @@ async def _ingest_evidence_async(
         )
 
         # Update evidence record
-        async for session in get_session():
-            repo = get_repository("evidence", session)
+        async with open_stores() as stores:
             from datetime import datetime, timezone
+
+            # The extracted text itself lives in MongoDB; the Postgres row keeps status only.
+            content_repo = get_repository("evidence_content", stores)
+            await content_repo.delete_where({"evidence_id": evidence_id})
+            await content_repo.create(EvidenceContent(
+                evidence_id=UUID(evidence_id),
+                case_id=UUID(case_id),
+                raw_text=result.raw_text,
+                transcription=result.transcription,
+                segments=result.segments,
+            ))
+            repo = get_repository("evidence", stores)
             await repo.update(evidence_id, {
                 "status": "indexed",
-                "raw_text": result.raw_text,
-                "transcription": result.transcription,
                 "modality": modality,
                 "chunk_count": chunk_count,
                 "vector_collection": case_id,
@@ -79,8 +113,8 @@ async def _ingest_evidence_async(
 
     except Exception as exc:
         log.error("evidence_ingestion_failed", error=str(exc))
-        async for session in get_session():
-            repo = get_repository("evidence", session)
+        async with open_stores() as stores:
+            repo = get_repository("evidence", stores)
             await repo.update(evidence_id, {
                 "status": "error",
                 "error_message": str(exc),

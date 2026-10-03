@@ -22,14 +22,52 @@ class Embedder(Protocol):
     async def embed_multimodal(self, inputs: dict) -> list[float]: ...
 
 
-class OpenAIEmbedder:
+class UnsupportedModalityError(ValueError):
+    """Raised when an embedder is asked for a modality it cannot represent."""
+
+
+class TextEmbeddingMixin:
+    """Gives text-only embedders sane image / audio / multimodal behaviour.
+
+    Evidence is embedded as *text*: images are transcribed by a vision model and audio
+    is transcribed during ingestion, so the embedder only ever sees their transcript.
+    """
+
+    async def embed_image(self, image_bytes: bytes) -> list[float]:
+        from app.ingestion.vision import transcribe_image
+
+        text, status = await transcribe_image(image_bytes, "image/png")
+        if not text:
+            raise UnsupportedModalityError(
+                f"Could not turn the image into text (vision status: {status}); "
+                "configure a vision-capable provider API key."
+            )
+        return await self.embed_text(text)  # type: ignore[attr-defined]
+
+    async def embed_audio(self, audio_bytes: bytes) -> list[float]:
+        raise UnsupportedModalityError(
+            "Audio is transcribed during ingestion; embed the transcript with embed_text()."
+        )
+
+    async def embed_multimodal(self, inputs: dict) -> list[float]:
+        """Embed the text component, falling back to a transcribed image."""
+        if inputs.get("text"):
+            return await self.embed_text(inputs["text"])  # type: ignore[attr-defined]
+        if inputs.get("image"):
+            return await self.embed_image(inputs["image"])
+        raise UnsupportedModalityError("embed_multimodal needs a 'text' or 'image' input")
+
+
+class OpenAIEmbedder(TextEmbeddingMixin):
     modalities = ["text"]
     dimension = 1536
+    provider_name = "openai"
 
     def __init__(self, model: str = "text-embedding-3-small", api_key: str = "") -> None:
         from openai import AsyncOpenAI
         self._client = AsyncOpenAI(api_key=api_key)
         self._model = model
+        self.model_name = model
         # Update dimension for large model
         if "large" in model:
             self.dimension = 3072
@@ -41,29 +79,24 @@ class OpenAIEmbedder:
         )
         return response.data[0].embedding
 
-    async def embed_image(self, image_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Use OpenAIVisionEmbedder for image embeddings")
-
-    async def embed_audio(self, audio_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Transcribe audio first, then embed as text")
-
-    async def embed_multimodal(self, inputs: dict) -> list[float]:
-        # Fallback: embed text component only
-        return await self.embed_text(inputs.get("text", ""))
 
 
-class GeminiEmbedder:
+
+
+class GeminiEmbedder(TextEmbeddingMixin):
     """Google Gemini embedder, implemented over the REST API via httpx
     (no `google-genai` SDK dependency needed)."""
 
     modalities = ["text"]
     dimension = 768
+    provider_name = "gemini"
 
     # gemini-embedding-001 returns 3072 dims unless outputDimensionality is set,
     # so we always request 768 explicitly to keep vector length stable and match
     # the Qdrant collection created from `self.dimension`.
     def __init__(self, model: str = "gemini-embedding-001", api_key: str = "") -> None:
         self._model = model
+        self.model_name = model
         self._api_key = api_key
 
     async def embed_text(self, text: str) -> list[float]:
@@ -93,24 +126,20 @@ class GeminiEmbedder:
         resp.raise_for_status()
         return []
 
-    async def embed_image(self, image_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Gemini image embeddings not supported here")
-
-    async def embed_audio(self, audio_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Transcribe audio first, then embed as text")
-
-    async def embed_multimodal(self, inputs: dict) -> list[float]:
-        return await self.embed_text(inputs.get("text", ""))
 
 
-class SentenceTransformerEmbedder:
+
+
+class SentenceTransformerEmbedder(TextEmbeddingMixin):
     """Local embedder — no API key needed. Good for offline/air-gapped deployments."""
 
     modalities = ["text"]
     dimension = 384  # all-MiniLM-L6-v2 default
+    provider_name = "local"
 
     def __init__(self, model: str = "all-MiniLM-L6-v2") -> None:
         from sentence_transformers import SentenceTransformer
+        self.model_name = model
         self._model = SentenceTransformer(model)
         self.dimension = self._model.get_sentence_embedding_dimension()
 
@@ -120,11 +149,5 @@ class SentenceTransformerEmbedder:
         embedding = await loop.run_in_executor(None, self._model.encode, text)
         return embedding.tolist()
 
-    async def embed_image(self, image_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Use a multimodal model for image embeddings")
 
-    async def embed_audio(self, audio_bytes: bytes) -> list[float]:
-        raise NotImplementedError("Transcribe audio first")
 
-    async def embed_multimodal(self, inputs: dict) -> list[float]:
-        return await self.embed_text(inputs.get("text", ""))

@@ -18,6 +18,7 @@ class Simulation:
     max_turns: int = 50
     turn_order: list[str] = field(default_factory=list)  # agent IDs, mutable
     config: dict[str, Any] = field(default_factory=dict)
+    org_id: UUID | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

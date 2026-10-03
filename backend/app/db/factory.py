@@ -1,48 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
-
-from app.config import get_settings
+from app.db.repositories import MONGO_REPOSITORIES, PG_REPOSITORIES
 from app.db.repository_base import BaseRepository
+from app.db.stores import Stores
 
 
-def get_repository(model: str, session: Any) -> BaseRepository:
+def get_repository(model: str, stores: Stores) -> BaseRepository:
+    """The repository for ``model``, bound to the store that model lives in.
+
+    PostgreSQL: organization, membership, invite, plan, subscription, case_member,
+    usage_counter, admin_event, case, simulation, agent, evidence, audit.
+    MongoDB: turn, evidence_content, llm_usage, llm_price.
     """
-    Factory that returns the correct repository adapter for the configured DB backend.
-
-    Args:
-        model: one of "case", "evidence", "agent", "simulation", "turn"
-        session: AsyncSession (SQL) or AsyncIOMotorDatabase (Mongo)
-    """
-    settings = get_settings()
-    backend = settings.DB_BACKEND
-
-    from app.db.repositories.case_repo import CasePostgresRepository, CaseMongoRepository
-    from app.db.repositories.evidence_repo import EvidencePostgresRepository, EvidenceMongoRepository
-    from app.db.repositories.agent_repo import AgentPostgresRepository, AgentMongoRepository
-    from app.db.repositories.simulation_repo import SimulationPostgresRepository, SimulationMongoRepository
-    from app.db.repositories.turn_repo import TurnPostgresRepository, TurnMongoRepository
-
-    SQL_MAP = {
-        "case": CasePostgresRepository,
-        "evidence": EvidencePostgresRepository,
-        "agent": AgentPostgresRepository,
-        "simulation": SimulationPostgresRepository,
-        "turn": TurnPostgresRepository,
-    }
-    MONGO_MAP = {
-        "case": CaseMongoRepository,
-        "evidence": EvidenceMongoRepository,
-        "agent": AgentMongoRepository,
-        "simulation": SimulationMongoRepository,
-        "turn": TurnMongoRepository,
-    }
-
-    if backend in ("postgres", "sqlite"):
-        cls = SQL_MAP[model]
-    elif backend == "mongodb":
-        cls = MONGO_MAP[model]
-    else:
-        raise NotImplementedError(f"DB backend '{backend}' not yet supported for model '{model}'")
-
-    return cls(session)
+    if model in PG_REPOSITORIES:
+        return PG_REPOSITORIES[model](stores.pg)
+    if model in MONGO_REPOSITORIES:
+        return MONGO_REPOSITORIES[model](stores.mongo)
+    raise KeyError(f"Unknown model '{model}'")

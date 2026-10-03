@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -50,6 +51,12 @@ class AgentResponse:
     token_count: int
     latency_ms: int
     reasoning_trace: dict[str, Any] = field(default_factory=dict)
+    # Provenance for the audit trail, and review results attached by the orchestrator.
+    provider: str = ""
+    model: str = ""
+    prompt_sha256: str = ""
+    retrieved: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -129,7 +136,7 @@ class BaseAgent(ABC):
             query=query,
             relevant_turns=relevant_turns,
             case_context=case_context,
-            extra={"case_metadata": context.case_metadata},
+            extra={"case_metadata": context.case_metadata, **context.extra},
         )
 
     async def retrieve(
@@ -170,14 +177,21 @@ class BaseAgent(ABC):
         history = self.memory.as_messages()
         rag_context = self._build_rag_context(retrieved)
 
+        legal_context = perceived.extra.get("legal_context", "")
+        directive = perceived.extra.get("procedure_directive", "")
+        corrections = perceived.extra.get("corrections", "")
+
         user_content = (
             f"Context: {perceived.case_context}\n\n"
             + (f"Relevant Evidence:\n{rag_context}\n\n" if rag_context else "")
+            + (f"Applicable law:\n{legal_context}\n\n" if legal_context else "")
+            + (f"{corrections}\n\n" if corrections else "")
             + "Recent proceedings:\n"
             + "\n".join(
                 f"{t.get('agent_name', 'Unknown')} ({t.get('role', '?')}): {t.get('content', '')[:400]}"
                 for t in perceived.relevant_turns
             )
+            + (f"\n\n{directive}" if directive else "")
             + f"\n\nNow it is your turn as {self.name} ({self.role}). "
               "Stay fully in character. Reference evidence using [EVIDENCE:uuid:index] markers. "
               "You may express uncertainty, hesitation, or challenge prior statements. "
@@ -189,6 +203,10 @@ class BaseAgent(ABC):
             *history,
             LLMMessage(role="user", content=user_content),
         ]
+
+        prompt_sha256 = hashlib.sha256(
+            "\n".join(f"{m.role}:{m.content}" for m in messages).encode("utf-8")
+        ).hexdigest()
 
         start = time.perf_counter()
         if stream_callback:
@@ -227,6 +245,17 @@ class BaseAgent(ABC):
             citations=citations,
             token_count=token_count,
             latency_ms=elapsed,
+            provider=getattr(self.llm, "provider_name", ""),
+            model=getattr(self.llm, "model_name", ""),
+            prompt_sha256=prompt_sha256,
+            retrieved=[
+                {
+                    "evidence_id": r.chunk.metadata.get("evidence_id"),
+                    "chunk_index": r.chunk.metadata.get("chunk_index", 0),
+                    "score": round(float(r.score), 4),
+                }
+                for r in retrieved
+            ],
         )
 
     async def maybe_spawn(self, response: AgentResponse) -> list[SpawnRequest]:

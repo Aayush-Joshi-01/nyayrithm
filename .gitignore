@@ -378,3 +378,7 @@ CLAUDE.md
 PRODUCT.md
 .impeccable/*
 .mcp.json
+
+# committed env templates (no secrets): dev defaults + production template
+!.env.dev
+!.env.example

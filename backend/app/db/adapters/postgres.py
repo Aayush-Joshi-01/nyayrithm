@@ -34,6 +34,7 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
 
     table_name: str
     model_cls: type[T]
+    default_order: str = "created_at DESC"
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
@@ -67,7 +68,7 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
         order_by: str | None = None,
     ) -> tuple[list[T], int]:
         where, params = self._build_where(filters or {})
-        order = f"ORDER BY {order_by}" if order_by else "ORDER BY created_at DESC"
+        order = f"ORDER BY {order_by}" if order_by else f"ORDER BY {self.default_order}"
         offset = (page - 1) * size
 
         count_result = await self.session.execute(
@@ -111,6 +112,24 @@ class PostgresRepository(BaseRepository[T], Generic[T]):
         )
         await self.session.commit()
         return result.rowcount > 0
+
+    async def count(self, filters: dict[str, Any] | None = None) -> int:
+        where, params = self._build_where(filters or {})
+        result = await self.session.execute(
+            text(f"SELECT COUNT(*) FROM {self.table_name}{where}"), params
+        )
+        return int(result.scalar() or 0)
+
+    async def delete_where(self, filters: dict[str, Any]) -> int:
+        """Delete every row matching all ``filters``; returns the number removed."""
+        if not filters:
+            raise ValueError("delete_where requires at least one filter")
+        where, params = self._build_where(filters)
+        result = await self.session.execute(
+            text(f"DELETE FROM {self.table_name}{where}"), params
+        )
+        await self.session.commit()
+        return result.rowcount or 0
 
     async def query(self, raw_query: Any, **kwargs) -> list[T]:
         result = await self.session.execute(text(str(raw_query)), kwargs)

@@ -1,4 +1,5 @@
 import type { WsEvent } from "@/types/api";
+import { getAccessToken } from "@/lib/auth-token";
 
 const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
@@ -10,6 +11,8 @@ export class SimulationWebSocket {
   private reconnectDelay = 1000;
   private _simId: string;
   private _closed = false;
+  private _connecting = false;
+  private _authRetries = 0;
 
   constructor(simId: string) {
     this._simId = simId;
@@ -22,7 +25,18 @@ export class SimulationWebSocket {
     const rs = this.ws?.readyState;
     if (rs === WebSocket.CONNECTING || rs === WebSocket.OPEN) return;
 
-    this.ws = new WebSocket(`${WS_BASE}/ws/simulations/${this._simId}`);
+    if (this._connecting) return;
+    this._connecting = true;
+    void this.open();
+  }
+
+  private async open(forceRefresh = false): Promise<void> {
+    // Browsers can't set headers on a WebSocket, so the token rides in the query string.
+    const token = await getAccessToken(forceRefresh);
+    this._connecting = false;
+    if (this._closed) return;
+    const qs = token ? `?token=${encodeURIComponent(token)}` : "";
+    this.ws = new WebSocket(`${WS_BASE}/ws/simulations/${this._simId}${qs}`);
 
     this.ws.onmessage = (e) => {
       try {
@@ -31,7 +45,14 @@ export class SimulationWebSocket {
       } catch {}
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (e) => {
+      // 4401 = token rejected, 4403 = not your simulation. Retrying a 4403 is futile.
+      if (e.code === 4403) return;
+      if (e.code === 4401) {
+        // One forced token refresh, then give up rather than hammer the server.
+        if (this._authRetries++ < 1) void this.open(true);
+        return;
+      }
       if (!this._closed) {
         setTimeout(() => this.connect(), this.reconnectDelay);
         this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, 10000);
@@ -43,6 +64,7 @@ export class SimulationWebSocket {
 
     this.ws.onopen = () => {
       this.reconnectDelay = 1000;
+      this._authRetries = 0;
     };
   }
 

@@ -56,4 +56,7 @@ def build_llm_provider(
 
     api_key = settings.get_api_key(provider_name)
     cls = PROVIDER_REGISTRY[provider_name]
-    return cls(model=model_name, api_key=api_key)
+    # Every agent's provider is metered: usage, latency and estimated cost per call.
+    from app.llm.metering import MeteredLLM
+
+    return MeteredLLM(cls(model=model_name, api_key=api_key))

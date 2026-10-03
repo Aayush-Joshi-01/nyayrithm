@@ -1,48 +1,42 @@
-name: Deploy Backend
+name: Publish Images
 
 # Manual trigger only — run from the Actions tab.
+# Deployment itself is `docker compose up -d --build` on the target host (see
+# docs/pages/deployment.md). This workflow builds the images and pushes them to GHCR so a
+# host can pull instead of building.
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref (branch/tag/SHA) to deploy"
+        description: "Git ref (branch/tag/SHA) to publish"
         required: false
         default: main
 
 jobs:
-  deploy:
-    name: Build, Push & Deploy Backend
+  publish:
+    name: Build & push images
     runs-on: ubuntu-latest
-    environment: production
     permissions:
-      id-token: write
       contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - { name: backend, context: ./backend }
+          - { name: frontend, context: ./frontend, target: production }
+          - { name: admin, context: ./admin, target: production }
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: docker/login-action@v3
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & Push Backend Image
-        run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/nyayrithm-backend:${{ github.sha }}
-          docker build ./backend -t $IMAGE
-          docker push $IMAGE
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-
-      - name: Terraform Apply
-        working-directory: infra/terraform/environments/prod
-        env:
-          TF_VAR_backend_image: ${{ env.IMAGE }}
-        run: |
-          terraform init
-          terraform apply -auto-approve
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/nyayrithm-${{ matrix.name }}:${{ github.sha }}

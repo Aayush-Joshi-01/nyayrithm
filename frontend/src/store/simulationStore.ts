@@ -104,6 +104,8 @@ export const useSimulationStore = create<SimulationState>((set) => ({
           token_count: 0,
           latency_ms: 0,
           created_at: new Date().toISOString(),
+          legal_review: event.data.legal_review ?? null,
+          procedure: event.data.procedure ?? null,
         };
         set((state) => ({
           turns: mergeTurns(state.turns, [completedTurn]),
@@ -164,7 +166,12 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         set({ error: event.data.message, streaming: null });
         break;
 
+      case "quota.exceeded":
+        set({ error: event.data.message, streaming: null });
+        break;
+
       case "connected":
+      case "citation.flagged": // already carried on the turn's legal_review
       case "ping":
       case "pong":
         break;

@@ -8,7 +8,14 @@ import structlog
 
 from app.agents.graph.agent_graph import AgentGraph
 from app.agents.orchestrator import AgentOrchestrator
+from app.config import get_settings
+from app.core.exceptions import EntitlementError
+from app.legal.audit import AuditLog
+from app.llm.metering import usage_context
+from app.legal.procedure import ProcedureEngine
+from app.legal.review import LegalReviewer
 from app.models.agent import AgentDefinition
+from app.services.entitlements import EntitlementService
 from app.models.simulation import Simulation
 from app.models.turn import Turn
 from app.vector_db.factory import get_vector_store
@@ -39,6 +46,7 @@ class SimulationEngine:
         agent_repo,
         prior_turns: list[Turn] | None = None,
         broadcast_fn: Callable | None = None,
+        audit_fn: Callable | None = None,
     ) -> AgentOrchestrator:
         graph = AgentGraph(
             case_id=UUID(str(simulation.case_id)),
@@ -81,6 +89,8 @@ class SimulationEngine:
                 "content": t.content_edited or t.content,
                 "citations": t.citations or [],
                 "turn_number": t.turn_number,
+                "legal_review": (t.metadata or {}).get("legal_review"),
+                "procedure": (t.metadata or {}).get("procedure"),
             })
 
         async def persist_turn(result, agent_id: str, sim_id: str):
@@ -94,6 +104,13 @@ class SimulationEngine:
                 token_count=result.response.token_count,
                 latency_ms=result.response.latency_ms,
                 reasoning_trace=result.response.reasoning_trace,
+                retrieved_chunks=result.response.retrieved,
+                metadata={
+                    **result.response.metadata,
+                    "provider": result.response.provider,
+                    "model": result.response.model,
+                    "prompt_sha256": result.response.prompt_sha256,
+                },
             )
             await turn_repo.create(turn)
 
@@ -116,6 +133,8 @@ class SimulationEngine:
             )
             await agent_repo.create(row)
 
+        reviewer, procedure = self._legal_components(simulation, case_metadata)
+
         return AgentOrchestrator(
             simulation=simulation,
             graph=graph,
@@ -125,7 +144,28 @@ class SimulationEngine:
             broadcast_fn=broadcast_fn,
             agent_persist_fn=persist_agent,
             initial_turns=recent,
+            procedure=procedure,
+            reviewer=reviewer,
+            audit_fn=audit_fn,
         )
+
+    @staticmethod
+    def _legal_components(
+        simulation: Simulation, case_metadata: dict[str, Any]
+    ) -> tuple[LegalReviewer | None, ProcedureEngine | None]:
+        """Citation review (when enabled) and procedure enforcement (courtroom/deposition)."""
+        settings = get_settings()
+        reviewer = LegalReviewer() if settings.LEGAL_REVIEW_ENABLED else None
+
+        procedure = None
+        if simulation.config.get("enforce_procedure", True):
+            pack = reviewer.pack_for(
+                case_metadata.get("country"), case_metadata.get("jurisdiction")
+            ) if reviewer else None
+            procedure = ProcedureEngine.for_mode(
+                simulation.mode, simulation.max_turns, pack.procedure_notes if pack else None
+            )
+        return reviewer, procedure
 
     async def run_simulation(
         self,
@@ -136,29 +176,26 @@ class SimulationEngine:
         import asyncio
 
         from app.config import get_settings
-        from app.db.session import get_session
         from app.db.factory import get_repository
+        from app.db.stores import open_stores
 
         turn_delay = get_settings().SIMULATION_TURN_DELAY_SECONDS
 
         async def _with_session(fn):
-            gen = get_session()
-            session = await gen.__anext__()
-            try:
-                return await fn(session)
-            finally:
-                await gen.aclose()
+            async with open_stores() as stores:
+                return await fn(stores)
 
         # Load static case metadata once.
-        async def _load(session):
-            sim_repo = get_repository("simulation", session)
-            case_repo = get_repository("case", session)
+        async def _load(stores):
+            sim_repo = get_repository("simulation", stores)
+            case_repo = get_repository("case", stores)
             simulation = await sim_repo.get(simulation_id)
             if not simulation or simulation.status not in _ACTIVE_STATUSES:
                 return None
             case = await case_repo.get(str(simulation.case_id))
             return {
                 "title": case.title if case else "",
+                "description": case.description if case else "",
                 "country": case.country if case else "",
                 "jurisdiction": case.jurisdiction if case else "",
                 "legal_system": (case.legal_system if case else "") or "common_law",
@@ -171,11 +208,11 @@ class SimulationEngine:
         max_turns = case_metadata.pop("_max_turns")
 
         # ── Turn loop ────────────────────────────────────────────────────────
-        async def _one_turn(session) -> str:
+        async def _one_turn(stores) -> str:
             """Returns 'continue' | 'stop' | 'done'."""
-            sim_repo = get_repository("simulation", session)
-            agent_repo = get_repository("agent", session)
-            turn_repo = get_repository("turn", session)
+            sim_repo = get_repository("simulation", stores)
+            agent_repo = get_repository("agent", stores)
+            turn_repo = get_repository("turn", stores)
 
             simulation = await sim_repo.get(simulation_id)
             if not simulation:
@@ -189,6 +226,36 @@ class SimulationEngine:
                 return "stop"
             if simulation.current_turn >= max_turns:
                 return "done"
+
+            # The firm's plan is checked before every turn, so a run stops the moment the
+            # monthly token budget is gone (or the subscription lapses) rather than at the end.
+            if simulation.org_id:
+                ent = EntitlementService(stores)
+                reason = None
+                try:
+                    await ent.require_active(simulation.org_id)
+                    if await ent.tokens_exhausted(simulation.org_id):
+                        reason = "quota_exceeded"
+                except EntitlementError:
+                    reason = "subscription_inactive"
+                if reason:
+                    await sim_repo.update(simulation_id, {"status": "paused"})
+                    await AuditLog(stores).append(
+                        simulation_id, "simulation.paused", "system",
+                        {"reason": reason, "at_turn": simulation.current_turn},
+                    )
+                    if broadcast_fn:
+                        message = (
+                            "The firm's monthly token allowance has been used up."
+                            if reason == "quota_exceeded"
+                            else "The firm's subscription is not active."
+                        )
+                        await broadcast_fn("quota.exceeded", {"reason": reason, "message": message})
+                        await broadcast_fn("simulation.paused", {
+                            "simulation_id": simulation_id,
+                            "turn_number": simulation.current_turn,
+                        })
+                    return "stop"
 
             agent_defs, _ = await agent_repo.list(
                 filters={"simulation_id": str(simulation.id)},
@@ -210,6 +277,11 @@ class SimulationEngine:
                 size=500, order_by="turn_number",
             )
 
+            audit = AuditLog(stores)
+
+            async def audit_fn(event_type: str, actor: str, payload: dict) -> None:
+                await audit.append(simulation_id, event_type, actor, payload)
+
             orchestrator = await self.build_orchestrator(
                 simulation=simulation,
                 agent_definitions=agent_defs,
@@ -218,10 +290,15 @@ class SimulationEngine:
                 agent_repo=agent_repo,
                 prior_turns=prior_turns,
                 broadcast_fn=broadcast_fn,
+                audit_fn=audit_fn,
             )
 
             try:
-                result = await orchestrator.run_next_turn()
+                with usage_context(
+                    org_id=str(simulation.org_id) if simulation.org_id else None,
+                    user_id=simulation.created_by, simulation_id=simulation_id,
+                ):
+                    result = await orchestrator.run_next_turn()
             except Exception as exc:  # noqa: BLE001
                 # A turn failed even after the provider's own retries. Park the
                 # simulation as 'paused' so it can be resumed (state is on disk).
@@ -244,6 +321,8 @@ class SimulationEngine:
                 "current_turn": orchestrator.simulation.current_turn,
                 "updated_at": datetime.now(timezone.utc),
             })
+            if simulation.org_id:
+                await EntitlementService(stores).add_usage(simulation.org_id, turns=1)
             return "continue"
 
         while True:
@@ -256,14 +335,17 @@ class SimulationEngine:
         if outcome == "stop":
             return
 
-        async def _finish(session) -> int:
-            sim_repo = get_repository("simulation", session)
+        async def _finish(stores) -> int:
+            sim_repo = get_repository("simulation", stores)
             final = await sim_repo.get(simulation_id)
             total = final.current_turn if final else 0
             await sim_repo.update(simulation_id, {
                 "status": "completed",
                 "ended_at": datetime.now(timezone.utc),
             })
+            await AuditLog(stores).append(
+                simulation_id, "simulation.completed", "system", {"total_turns": total}
+            )
             return total
 
         total = await _with_session(_finish)

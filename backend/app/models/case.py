@@ -17,5 +17,6 @@ class Case:
     id: UUID = field(default_factory=uuid4)
     status: str = "open"  # open | in_simulation | closed | archived
     metadata: dict[str, Any] = field(default_factory=dict)
+    org_id: UUID | None = None  # the firm that owns the case
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

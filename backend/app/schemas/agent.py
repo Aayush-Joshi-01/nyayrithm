@@ -4,17 +4,26 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+
+from app.models.agent import VALID_ROLES
 
 
 class AgentCreate(BaseModel):
     role: str
-    name: str
+    name: str = Field(..., min_length=1, max_length=120)
     llm_provider: str | None = None
     llm_model: str | None = None
     persona: dict[str, Any] = {}
     knowledge_scope: dict[str, Any] = {}
     initial_instruction: str | None = None
+
+    @field_validator("role")
+    @classmethod
+    def _known_role(cls, v: str) -> str:
+        if v not in VALID_ROLES:
+            raise ValueError(f"role must be one of {sorted(VALID_ROLES)}")
+        return v
 
 
 class AgentResponse(BaseModel):

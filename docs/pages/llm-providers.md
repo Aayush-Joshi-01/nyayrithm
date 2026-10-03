@@ -210,7 +210,8 @@ Cohere offers a **free trial** with generous limits and is especially strong for
 
 ### Setup
 ```env
-LLM_DEFAULT_PROVIDER=cohere        # requires implementing CohereLLMProvider
+LLM_DEFAULT_PROVIDER=cohere        # requires implementing CohereLLMProvider and adding "cohere"
+                                    # to the LLM_DEFAULT_PROVIDER options in app/config.py
 COHERE_API_KEY=...                  # from https://dashboard.cohere.com
 ```
 

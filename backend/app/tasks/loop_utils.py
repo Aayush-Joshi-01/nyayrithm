@@ -11,11 +11,12 @@ Clear the caches at the start of each task so every run gets fresh clients.
 
 
 def clear_loop_bound_caches() -> None:
+    from app.db.mongo import _client as _mongo_client
     from app.db.session import _make_engine, _make_session_factory
     from app.rag.embedder_factory import get_embedder
     from app.vector_db.factory import get_vector_store
 
-    for fn in (_make_engine, _make_session_factory, get_vector_store, get_embedder):
+    for fn in (_make_engine, _make_session_factory, _mongo_client, get_vector_store, get_embedder):
         try:
             fn.cache_clear()
         except AttributeError:

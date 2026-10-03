@@ -8,6 +8,13 @@ from app.rag.embedder import Embedder
 
 @lru_cache
 def get_embedder() -> Embedder:
+    """The configured embedder, wrapped so each call is metered."""
+    from app.llm.metering import MeteredEmbedder
+
+    return MeteredEmbedder(_build_embedder())  # type: ignore[return-value]
+
+
+def _build_embedder() -> Embedder:
     settings = get_settings()
     backend = settings.EMBEDDER_BACKEND
 

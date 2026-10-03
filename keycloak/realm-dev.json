@@ -1,0 +1,124 @@
+{
+  "realm": "nyayrithm",
+  "enabled": true,
+  "displayName": "Nyayrithm (development)",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 3600,
+  "clients": [
+    {
+      "clientId": "nyayrithm-app",
+      "name": "Nyayrithm App (firm portal)",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${APP_URL:http://localhost:3000}/*"
+      ],
+      "webOrigins": [
+        "${APP_URL:http://localhost:3000}"
+      ],
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "nyayrithm-admin",
+      "name": "Nyayrithm Admin Portal",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "${ADMIN_URL:http://localhost:3001}/*"
+      ],
+      "webOrigins": [
+        "${ADMIN_URL:http://localhost:3001}"
+      ],
+      "protocol": "openid-connect"
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "name": "user",
+        "description": "Regular platform user"
+      },
+      {
+        "name": "platform_admin",
+        "description": "Platform operator: firms, plans, usage. Never reads case content."
+      }
+    ]
+  },
+  "defaultRoles": [
+    "user"
+  ],
+  "smtpServer": {},
+  "users": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000a1",
+      "username": "platform.admin@nyayrithm.dev",
+      "email": "platform.admin@nyayrithm.dev",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin#dev-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "platform_admin"
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000b1",
+      "username": "owner@devfirm.nyayrithm.dev",
+      "email": "owner@devfirm.nyayrithm.dev",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Asha",
+      "lastName": "Rao",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Owner#dev-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000c1",
+      "username": "attorney@devfirm.nyayrithm.dev",
+      "email": "attorney@devfirm.nyayrithm.dev",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Vikram",
+      "lastName": "Sethi",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Attorney#dev-2026",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user"
+      ]
+    }
+  ]
+}
