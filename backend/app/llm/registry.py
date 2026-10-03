@@ -28,9 +28,11 @@ def _lazy_register() -> None:
     from app.llm.openai import OpenAIProvider
     from app.llm.anthropic import AnthropicProvider
     from app.llm.gemini import GeminiProvider
+    from app.llm.ollama import OllamaProvider
     register_provider("openai", OpenAIProvider)
     register_provider("anthropic", AnthropicProvider)
     register_provider("gemini", GeminiProvider)
+    register_provider("ollama", OllamaProvider)
 
 
 def list_providers() -> list[str]:
