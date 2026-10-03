@@ -4,6 +4,7 @@ from typing import Any
 
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qmodels
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from app.vector_db.base import SearchResult, VectorChunk
 
@@ -13,8 +14,9 @@ class QdrantVectorStore:
         self.client = AsyncQdrantClient(url=url, api_key=api_key)
 
     async def create_collection(self, name: str, dimension: int) -> None:
-        exists = await self.collection_exists(name)
-        if not exists:
+        if await self.collection_exists(name):
+            return
+        try:
             await self.client.create_collection(
                 collection_name=name,
                 vectors_config=qmodels.VectorParams(
@@ -22,6 +24,11 @@ class QdrantVectorStore:
                     distance=qmodels.Distance.COSINE,
                 ),
             )
+        except UnexpectedResponse as exc:
+            # Several workers ingesting a new case's first files all reach this point at once;
+            # the losers of the race get 409 "already exists", which is exactly what we want.
+            if exc.status_code != 409 and not await self.collection_exists(name):
+                raise
 
     async def collection_exists(self, name: str) -> bool:
         try:

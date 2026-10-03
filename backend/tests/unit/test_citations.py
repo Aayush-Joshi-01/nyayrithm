@@ -260,3 +260,25 @@ def test_without_an_own_case_behaviour_is_unchanged(pack):
 def test_reviewer_threads_the_case_title_through():
     r = LegalReviewer().review("The matter of State v. Kumar is called.", "India", own_case="State v. Kumar")
     assert r.status == "clean" and r.citations == []
+
+
+# ── party names are read from the right place ─────────────────────────────────
+def test_leading_prose_is_not_part_of_the_case_name(pack):
+    found = extract_and_verify(
+        "As held in (2014) 8 SCC 273. The defence cites Ramesh Kumar v. State of Haryana (1978) 1 SCC 248"
+        " and Rajesh Verma v. State of Nowhere (2019) 4 SCC 123 for the point.", pack)
+    raws = {c.status: c.raw for c in found}
+    assert raws["mismatch"] == "Ramesh Kumar v. State of Haryana (1978) 1 SCC 248"
+    assert raws["unverified"] == "Rajesh Verma v. State of Nowhere (2019) 4 SCC 123"
+
+
+def test_a_name_wrapped_across_lines_is_tidied(pack):
+    found = extract_and_verify(
+        "see Arjun Panditrao Khotkar v. Kailash\nKushanrao Gorantyal (2020) 7 SCC 1.", pack)
+    assert found[0].status == "verified"
+    assert "\n" not in found[0].raw and found[0].raw.startswith("Arjun Panditrao Khotkar v. Kailash Kushanrao")
+
+
+def test_initials_and_ors_do_not_cut_a_party_name(pack):
+    found = extract_and_verify("K.S. Puttaswamy (Retd.) v. Union of India (2017) 10 SCC 1", pack)
+    assert found[0].status == "verified"

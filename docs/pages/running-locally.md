@@ -73,6 +73,9 @@ production compose file never mounts the dev realm.
 
 ## Trying the features
 
+The repository ships a ready-made case, [`samples/`](https://github.com/Aayush-Joshi-01/nyayrithm/tree/main/samples), with nine evidence files (including a text PDF and a photographed note that needs OCR), deliberate contradictions to find, and a walkthrough covering every portal feature. A quick version:
+
+
 1. **A proceeding.** In the firm portal open the sample case, add a text file as evidence,
    create a proceeding (courtroom mode, 12 turns), and start it. Watch it stream.
 2. **An invitation.** In credentials mode, sign in as the owner, go to **Team**, invite

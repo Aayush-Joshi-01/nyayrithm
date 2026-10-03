@@ -60,9 +60,11 @@ _ART_LIST = rf"{_ART_NUM}(?:\s*(?:,|and|&|or)\s*{_ART_NUM})*"
 _SEC_KW = r"(?<![A-Za-z])(?:sections?|secs?\.?|ss?\.|u/s\.?|u\.s\.)"
 
 _CASE_WINDOW = 140
+_ABBREVIATIONS = frozenset({"ors.", "anr.", "dr.", "mr.", "mrs.", "ms.", "shri.", "smt.", "m/s.", "no.", "nos."})
 _LEADING_FILLER = frozenset({
     "in", "see", "per", "also", "held", "cited", "case", "of", "the", "as", "decision",
     "judgment", "ruling", "reliance", "placed", "on", "and", "by", "vide", "v",
+    "cites", "cited", "relies", "relied", "citing", "counsel", "defence", "defense", "prosecution",
 })
 
 _SCC = re.compile(r"\(\s*((?:19|20)\d{2})\s*\)\s*(\d+)\s*SCC\s*(\d+)", re.I)
@@ -170,21 +172,35 @@ def _article_matches(text: str, pack: JurisdictionPack) -> list[tuple[str, str, 
 def _case_cite_matches(text: str) -> list[tuple[str, str, tuple[int, int], str | None]]:
     """(canonical_cite, kind, span, party_name_before_cite) for each reporter citation."""
     out: list[tuple[str, str, tuple[int, int], str | None]] = []
+    # Where each earlier reporter citation ends, so one case's name never reaches back into
+    # the citation of the case before it.
+    ends = sorted(m.end() for rx in (_SCC, _AIR, _ONLINE) for m in rx.finditer(text))
     for rx, fmt in (
         (_SCC, lambda m: f"({m.group(1)}) {m.group(2)} SCC {m.group(3)}"),
         (_AIR, lambda m: f"AIR {m.group(1)} {m.group(2)} {m.group(3)}"),
         (_ONLINE, lambda m: f"{m.group(1)} SCC OnLine {m.group(2)} {m.group(3)}"),
     ):
         for m in rx.finditer(text):
-            window = text[max(0, m.start() - _CASE_WINDOW): m.start()]
+            floor = max((e for e in ends if e <= m.start()), default=0)
+            window = text[max(0, m.start() - _CASE_WINDOW, floor): m.start()]
             party = _PARTY_BEFORE_CITE.search(window)
             name = None
             if party:
                 left = party.group(1).split()
-                while left and left[0].lower().strip(",.") in _LEADING_FILLER:
+                # Keep only the last sentence: "...SCC 1. The defence cites Ramesh Kumar" is
+                # really "Ramesh Kumar". A token ending in a full stop starts a new sentence
+                # unless it is an initial ("K.") or a title ("Dr.", "Ors.").
+                for i in range(len(left) - 1, -1, -1):
+                    tok = left[i]
+                    if tok.endswith(".") and len(tok.rstrip(".")) > 2 and tok.lower() not in _ABBREVIATIONS:
+                        left = left[i + 1:]
+                        break
+                # Party names start with a capital; drop leading prose ("defence cites ...").
+                while left and (left[0].lower().strip(",.") in _LEADING_FILLER or left[0][0].islower()):
                     left.pop(0)
                 if left:
-                    name = f"{' '.join(left)} v. {party.group(2).strip(' ,')}"
+                    right = " ".join(party.group(2).split()).strip(" ,")
+                    name = f"{' '.join(left)} v. {right}"
             out.append((fmt(m), "reporter", m.span(), name))
     return out
 
