@@ -8,6 +8,10 @@ import structlog
 
 from app.agents.graph.agent_graph import AgentGraph
 from app.agents.orchestrator import AgentOrchestrator
+from app.config import get_settings
+from app.legal.audit import AuditLog
+from app.legal.procedure import ProcedureEngine
+from app.legal.review import LegalReviewer
 from app.models.agent import AgentDefinition
 from app.models.simulation import Simulation
 from app.models.turn import Turn
@@ -39,6 +43,7 @@ class SimulationEngine:
         agent_repo,
         prior_turns: list[Turn] | None = None,
         broadcast_fn: Callable | None = None,
+        audit_fn: Callable | None = None,
     ) -> AgentOrchestrator:
         graph = AgentGraph(
             case_id=UUID(str(simulation.case_id)),
@@ -81,6 +86,8 @@ class SimulationEngine:
                 "content": t.content_edited or t.content,
                 "citations": t.citations or [],
                 "turn_number": t.turn_number,
+                "legal_review": (t.metadata or {}).get("legal_review"),
+                "procedure": (t.metadata or {}).get("procedure"),
             })
 
         async def persist_turn(result, agent_id: str, sim_id: str):
@@ -94,6 +101,13 @@ class SimulationEngine:
                 token_count=result.response.token_count,
                 latency_ms=result.response.latency_ms,
                 reasoning_trace=result.response.reasoning_trace,
+                retrieved_chunks=result.response.retrieved,
+                metadata={
+                    **result.response.metadata,
+                    "provider": result.response.provider,
+                    "model": result.response.model,
+                    "prompt_sha256": result.response.prompt_sha256,
+                },
             )
             await turn_repo.create(turn)
 
@@ -116,6 +130,8 @@ class SimulationEngine:
             )
             await agent_repo.create(row)
 
+        reviewer, procedure = self._legal_components(simulation, case_metadata)
+
         return AgentOrchestrator(
             simulation=simulation,
             graph=graph,
@@ -125,7 +141,28 @@ class SimulationEngine:
             broadcast_fn=broadcast_fn,
             agent_persist_fn=persist_agent,
             initial_turns=recent,
+            procedure=procedure,
+            reviewer=reviewer,
+            audit_fn=audit_fn,
         )
+
+    @staticmethod
+    def _legal_components(
+        simulation: Simulation, case_metadata: dict[str, Any]
+    ) -> tuple[LegalReviewer | None, ProcedureEngine | None]:
+        """Citation review (when enabled) and procedure enforcement (courtroom/deposition)."""
+        settings = get_settings()
+        reviewer = LegalReviewer() if settings.LEGAL_REVIEW_ENABLED else None
+
+        procedure = None
+        if simulation.config.get("enforce_procedure", True):
+            pack = reviewer.pack_for(
+                case_metadata.get("country"), case_metadata.get("jurisdiction")
+            ) if reviewer else None
+            procedure = ProcedureEngine.for_mode(
+                simulation.mode, simulation.max_turns, pack.procedure_notes if pack else None
+            )
+        return reviewer, procedure
 
     async def run_simulation(
         self,
@@ -159,6 +196,7 @@ class SimulationEngine:
             case = await case_repo.get(str(simulation.case_id))
             return {
                 "title": case.title if case else "",
+                "description": case.description if case else "",
                 "country": case.country if case else "",
                 "jurisdiction": case.jurisdiction if case else "",
                 "legal_system": (case.legal_system if case else "") or "common_law",
@@ -210,6 +248,11 @@ class SimulationEngine:
                 size=500, order_by="turn_number",
             )
 
+            audit = AuditLog(session)
+
+            async def audit_fn(event_type: str, actor: str, payload: dict) -> None:
+                await audit.append(simulation_id, event_type, actor, payload)
+
             orchestrator = await self.build_orchestrator(
                 simulation=simulation,
                 agent_definitions=agent_defs,
@@ -218,6 +261,7 @@ class SimulationEngine:
                 agent_repo=agent_repo,
                 prior_turns=prior_turns,
                 broadcast_fn=broadcast_fn,
+                audit_fn=audit_fn,
             )
 
             try:
@@ -264,6 +308,9 @@ class SimulationEngine:
                 "status": "completed",
                 "ended_at": datetime.now(timezone.utc),
             })
+            await AuditLog(session).append(
+                simulation_id, "simulation.completed", "system", {"total_turns": total}
+            )
             return total
 
         total = await _with_session(_finish)

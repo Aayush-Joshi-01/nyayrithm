@@ -8,6 +8,9 @@ import structlog
 
 from app.agents.base import TurnContext, TurnResult
 from app.agents.graph.agent_graph import AgentGraph
+from app.legal.audit import sha256_text
+from app.legal.procedure import ProcedureEngine
+from app.legal.review import LegalReviewer, correction_note_from
 from app.models.simulation import Simulation
 
 logger = structlog.get_logger()
@@ -32,6 +35,9 @@ class AgentOrchestrator:
         broadcast_fn: Callable | None = None,       # async fn(event_type, payload)
         agent_persist_fn: Callable | None = None,   # async fn(node, parent_id, spawn_request)
         initial_turns: list[dict[str, Any]] | None = None,
+        procedure: ProcedureEngine | None = None,   # who speaks when, and the current stage
+        reviewer: LegalReviewer | None = None,       # citation verification + applicable-law context
+        audit_fn: Callable | None = None,            # async fn(event_type, actor, payload)
     ) -> None:
         self.simulation = simulation
         self.graph = graph
@@ -40,6 +46,9 @@ class AgentOrchestrator:
         self.turn_persist_fn = turn_persist_fn
         self.broadcast_fn = broadcast_fn
         self.agent_persist_fn = agent_persist_fn
+        self.procedure = procedure
+        self.reviewer = reviewer
+        self.audit_fn = audit_fn
         self._recent_turns: list[dict[str, Any]] = list(initial_turns or [])
         # Resume turn-taking rotation where the prior run left off.
         self._current_turn_index = len(self._recent_turns)
@@ -48,14 +57,92 @@ class AgentOrchestrator:
         order = self.graph.get_turn_order()
         if not order:
             return None
+        if self.procedure is not None:
+            picked = self._procedural_speaker(order)
+            if picked:
+                return picked
         idx = self._current_turn_index % len(order)
         return order[idx]
+
+    def _procedural_speaker(self, order: list[str]) -> str | None:
+        """The procedure engine names a role; pick that role's least-recently-used agent."""
+        assert self.procedure is not None
+        last = self._recent_turns[-1] if self._recent_turns else None
+        role = self.procedure.next_speaker_role(
+            self.simulation.current_turn, last, self._available_roles()
+        )
+        if role is None:
+            return None
+        candidates = [a for a in order if a in self.graph.nodes and self.graph.nodes[a].role == role]
+        if not candidates:
+            return None
+        spoken = {a: sum(1 for t in self._recent_turns if t.get("agent_id") == a) for a in candidates}
+        return min(candidates, key=lambda a: (spoken[a], candidates.index(a)))
+
+    def _available_roles(self) -> set[str]:
+        return {n.role for n in self.graph.nodes.values()}
+
+    async def _audit(self, event_type: str, actor: str, payload: dict[str, Any]) -> None:
+        """An audit failure must never abort a turn that has already happened."""
+        if not self.audit_fn:
+            return
+        try:
+            await self.audit_fn(event_type, actor, payload)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("audit_append_failed", event_type=event_type, error=str(exc))
 
     def _is_complete(self) -> bool:
         return (
             self.simulation.status in ("completed", "failed", "paused")
             or self.simulation.current_turn >= self.simulation.max_turns
         )
+
+    def _turn_extras(self, agent_id: str) -> dict[str, Any]:
+        """Applicable law, the procedural directive and any registry correction for a turn."""
+        extra: dict[str, Any] = {}
+        meta = self.case_metadata
+        role = self.graph.nodes[agent_id].role
+        last = self._recent_turns[-1] if self._recent_turns else None
+
+        if self.reviewer is not None:
+            query = " ".join([
+                meta.get("title", ""), meta.get("description", ""),
+                *(t.get("content", "")[:300] for t in self._recent_turns[-3:]),
+            ])
+            context, refs = self.reviewer.context_for(
+                query, meta.get("country"), meta.get("jurisdiction")
+            )
+            if context:
+                extra["legal_context"] = context
+                extra["legal_context_refs"] = refs
+            mine = next(
+                (t for t in reversed(self._recent_turns) if t.get("agent_id") == agent_id), None
+            )
+            note = correction_note_from(mine.get("legal_review")) if mine else ""
+            if note:
+                extra["corrections"] = note
+
+        if self.procedure is not None:
+            extra["procedure_directive"] = self.procedure.directive(
+                self.simulation.current_turn, role, last, self._available_roles()
+            )
+        return extra
+
+    def _review(self, result: TurnResult, role: str) -> tuple[dict | None, dict | None]:
+        """Verify the turn's legal citations and check it against courtroom procedure."""
+        review_dict = None
+        if self.reviewer is not None:
+            meta = self.case_metadata
+            review_dict = self.reviewer.review(
+                result.response.content, meta.get("country"), meta.get("jurisdiction")
+            ).to_dict()
+        procedure_dict = None
+        if self.procedure is not None:
+            last = self._recent_turns[-1] if self._recent_turns else None
+            procedure_dict = self.procedure.review_turn(
+                self.simulation.current_turn, role, result.response.content, last
+            ).to_dict()
+        return review_dict, procedure_dict
 
     async def _build_context(self, agent_id: str) -> TurnContext:
         return TurnContext(
@@ -66,6 +153,7 @@ class AgentOrchestrator:
             recent_turns=list(self._recent_turns[-15:]),
             case_metadata=self.case_metadata,
             active_agent_ids=self.graph.get_turn_order(),
+            extra=self._turn_extras(agent_id),
         )
 
     async def _process_spawns(self, agent_id: str, result: TurnResult) -> list[str]:
@@ -191,9 +279,44 @@ class AgentOrchestrator:
                 })
             raise
 
+        review_dict, procedure_dict = self._review(result, node.role)
+        if review_dict:
+            result.response.metadata["legal_review"] = review_dict
+        if procedure_dict:
+            result.response.metadata["procedure"] = procedure_dict
+
         # Persist turn
         if self.turn_persist_fn:
             await self.turn_persist_fn(result, agent_id, str(self.simulation.id))
+
+        await self._audit("turn.generated", f"agent:{agent_id}", {
+            "turn_number": self.simulation.current_turn,
+            "role": node.role,
+            "agent_name": node.name,
+            "provider": result.response.provider,
+            "model": result.response.model,
+            "prompt_sha256": result.response.prompt_sha256,
+            "content_sha256": sha256_text(result.response.content),
+            "retrieved": result.response.retrieved,
+            "stage": (procedure_dict or {}).get("stage"),
+            "legal_status": (review_dict or {}).get("status"),
+            "violations": [v["code"] for v in (procedure_dict or {}).get("violations", [])],
+        })
+        flagged = [
+            c for c in (review_dict or {}).get("citations", [])
+            if c["severity"] in ("warning", "error")
+        ]
+        if flagged:
+            await self._audit("citation.flagged", f"agent:{agent_id}", {
+                "turn_number": self.simulation.current_turn,
+                "citations": [{"raw": c["raw"], "status": c["status"]} for c in flagged],
+            })
+            if self.broadcast_fn:
+                await self.broadcast_fn("citation.flagged", {
+                    "agent_id": agent_id,
+                    "turn_number": self.simulation.current_turn,
+                    "citations": flagged,
+                })
 
         # Update recent turns
         self._recent_turns.append({
@@ -203,6 +326,8 @@ class AgentOrchestrator:
             "content": result.response.content,
             "citations": result.response.citations,
             "turn_number": self.simulation.current_turn,
+            "legal_review": review_dict,
+            "procedure": procedure_dict,
         })
 
         if self.broadcast_fn:
@@ -214,6 +339,8 @@ class AgentOrchestrator:
                 "content": result.response.content,
                 "citations": result.response.citations,
                 "spawned_agents": [s.name for s in result.spawns],
+                "legal_review": review_dict,
+                "procedure": procedure_dict,
             })
 
         # Process spawns
