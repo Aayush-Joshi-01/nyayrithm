@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Suspense, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -29,7 +29,17 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupForm />
+    </Suspense>
+  )
+}
+
+function SignupForm() {
   const router = useRouter()
+  const params = useSearchParams()
+  const invitedEmail = params.get("email") ?? ""
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [serverError, setServerError] = useState("")
@@ -38,7 +48,10 @@ export default function SignupPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: invitedEmail },
+  })
 
   const onSubmit = async (values: FormValues) => {
     setServerError("")
@@ -57,7 +70,9 @@ export default function SignupPage() {
       setServerError(data.error ?? "Registration failed. Try a different email.")
       return
     }
-    router.push(data.redirect ?? "/dashboard")
+    // An invitation link sends people back to accept it once they have an account.
+    const back = params.get("redirect")
+    router.push(back && back.startsWith("/") ? back : (data.redirect ?? "/dashboard"))
   }
 
   return (

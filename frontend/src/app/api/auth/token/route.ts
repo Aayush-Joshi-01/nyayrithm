@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const refresh = req.cookies.get("kc_refresh_token")?.value
   if (!refresh) {
     // Dev mode runs without a login wall; the backend accepts token-less requests then.
-    if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+    if (process.env.NEXT_PUBLIC_DEV_AUTH_MODE === "open" || process.env.NEXT_PUBLIC_DEV_MODE === "true") {
       return NextResponse.json({ token: null }, { headers: NO_STORE })
     }
     return NextResponse.json({ error: "Not authenticated" }, { status: 401, headers: NO_STORE })

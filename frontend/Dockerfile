@@ -21,7 +21,15 @@ RUN apk add --no-cache libc6-compat
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
-RUN bun run build
+# NEXT_PUBLIC_* values are inlined at build time.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_WS_URL
+ARG NEXT_PUBLIC_KEYCLOAK_URL
+ARG NEXT_PUBLIC_KEYCLOAK_REALM=nyayrithm
+ARG NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=nyayrithm-app
+ARG NEXT_PUBLIC_DEV_AUTH_MODE=off
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL     NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL     NEXT_PUBLIC_KEYCLOAK_URL=$NEXT_PUBLIC_KEYCLOAK_URL     NEXT_PUBLIC_KEYCLOAK_REALM=$NEXT_PUBLIC_KEYCLOAK_REALM     NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=$NEXT_PUBLIC_KEYCLOAK_CLIENT_ID     NEXT_PUBLIC_DEV_AUTH_MODE=$NEXT_PUBLIC_DEV_AUTH_MODE
+RUN mkdir -p public && bun run build
 
 # ── Production stage ──────────────────────────────────────────────────────────
 FROM node:24-alpine AS production

@@ -166,6 +166,10 @@ export const useSimulationStore = create<SimulationState>((set) => ({
         set({ error: event.data.message, streaming: null });
         break;
 
+      case "quota.exceeded":
+        set({ error: event.data.message, streaming: null });
+        break;
+
       case "connected":
       case "citation.flagged": // already carried on the turn's legal_review
       case "ping":

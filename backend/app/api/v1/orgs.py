@@ -65,7 +65,13 @@ def _invite(i: Invite, token: str | None = None) -> InviteOut:
 # ── my firms ──────────────────────────────────────────────────────────────────
 @router.get("/orgs/me")
 async def my_firms(svc: OrgService = Depends(get_org_service)):
-    return {"firms": await svc.my_firms(), "roles": list(ORG_ROLES)}
+    u = svc.user
+    return {
+        "user": {"id": u.id, "email": u.email, "name": u.username or u.email,
+                 "platform_admin": u.is_platform_admin},
+        "firms": await svc.my_firms(),
+        "roles": list(ORG_ROLES),
+    }
 
 
 # ── members ───────────────────────────────────────────────────────────────────

@@ -44,7 +44,7 @@ export async function getAccessToken(forceRefresh = false): Promise<string | nul
 
 export function redirectToLogin(): void {
   if (typeof window === "undefined") return
-  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") return
+  if (process.env.NEXT_PUBLIC_DEV_AUTH_MODE === "open" || process.env.NEXT_PUBLIC_DEV_MODE === "true") return
   const here = window.location.pathname + window.location.search
   window.location.href = `/login?redirect=${encodeURIComponent(here)}`
 }

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
   // In dev mode, bypass auth check
-  if (process.env.NEXT_PUBLIC_DEV_MODE === "true") {
+  if (process.env.NEXT_PUBLIC_DEV_AUTH_MODE === "open" || process.env.NEXT_PUBLIC_DEV_MODE === "true") {
     return NextResponse.next()
   }
 

@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ThemeToggle } from "@/components/theme/ThemeToggle"
+import { DEV_OPEN } from "@/lib/dev"
 
 /* The clerk's window: a single lit desk. */
 export function AuthShell({
@@ -44,7 +45,9 @@ export function AuthShell({
         </div>
 
         <p className="mt-5 text-center font-mono text-[0.68rem] text-foreground/45">
-          Sessions are issued by Keycloak. No account is needed to run Nyayrithm locally.
+          {DEV_OPEN
+            ? "Development mode: no sign-in is needed. Open the dashboard directly."
+            : "Sessions are issued by Keycloak. Nyayrithm is used through your firm's subscription."}
         </p>
       </div>
     </div>

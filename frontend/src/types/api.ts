@@ -196,5 +196,77 @@ export type WsEvent =
   | { event: "simulation.completed"; data: { simulation_id: string } }
   | { event: "simulation.paused"; data: { simulation_id: string } }
   | { event: "conflict.detected"; data: { agent_id: string; conflicting_agent_id: string; evidence_ids: string[]; turn_number: number } }
+  | { event: "quota.exceeded"; data: { reason: string; message: string } }
   | { event: "error"; data: { message: string } }
   | { event: "ping" | "pong" };
+
+// ── Firms (tenancy) ───────────────────────────────────────────────────────────
+export type FirmRole = "owner" | "admin" | "attorney";
+
+export interface FirmSummary {
+  org_id: string;
+  name: string;
+  slug: string;
+  status: "active" | "suspended";
+  role: FirmRole;
+}
+
+export interface Me {
+  user: { id: string; email: string | null; name: string | null; platform_admin: boolean };
+  firms: FirmSummary[];
+  roles: FirmRole[];
+}
+
+export interface Member {
+  user_id: string;
+  email: string;
+  display_name: string;
+  role: FirmRole;
+  created_at: string;
+}
+
+export interface Invite {
+  id: string;
+  email: string;
+  role: FirmRole;
+  status: string;
+  expires_at: string;
+  created_at: string;
+  invite_url: string | null;
+}
+
+export interface InvitePreview {
+  org_name: string;
+  email: string;
+  role: FirmRole;
+  expires_at: string;
+}
+
+export interface FirmSubscription {
+  subscription: {
+    status: "trialing" | "active" | "past_due" | "cancelled";
+    seats: number;
+    current_period_start: string;
+    current_period_end: string | null;
+    invoice_ref: string;
+  } | null;
+  plan: {
+    code: string;
+    name: string;
+    seat_limit: number;
+    monthly_simulations: number;
+    monthly_tokens: number;
+    max_turns_per_sim: number;
+    storage_mb: number;
+  } | null;
+  seats: { used: number; pending: number; limit: number };
+  usage: { period: string; tokens: number; cost_usd: number; simulations: number; turns: number };
+  storage_used_bytes?: number;
+}
+
+export interface CaseShare {
+  user_id: string;
+  email: string;
+  added_by: string;
+  created_at: string;
+}

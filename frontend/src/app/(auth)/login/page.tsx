@@ -9,6 +9,7 @@ import { z } from "zod"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { AuthShell, AuthField } from "@/components/auth/AuthShell"
 import { Input } from "@/components/ui/input"
+import { DEV_AUTH_MODE, devAccounts } from "@/lib/dev"
 
 const schema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -28,6 +29,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get("redirect") ?? "/dashboard"
+  const accounts = DEV_AUTH_MODE === "credentials" ? devAccounts() : []
 
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState("")
@@ -35,8 +37,12 @@ function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: searchParams.get("email") ?? "", password: "" },
+  })
 
   const onSubmit = async (values: FormValues) => {
     setServerError("")
@@ -90,6 +96,26 @@ function LoginForm() {
             </button>
           </div>
         </AuthField>
+
+        {accounts.length > 0 && (
+          <div className="rounded-md border border-dashed border-brass/40 p-3">
+            <p className="font-mono text-[0.62rem] uppercase tracking-widest text-brass-text">Development accounts</p>
+            <ul className="mt-2 space-y-1">
+              {accounts.filter((a) => !/admin/i.test(a.role)).map((a) => (
+                <li key={a.email}>
+                  <button
+                    type="button"
+                    onClick={() => { setValue("email", a.email); setValue("password", a.password) }}
+                    className="flex w-full items-baseline justify-between gap-3 text-left text-[0.78rem] text-foreground/60 hover:text-foreground"
+                  >
+                    <span>{a.role}</span>
+                    <span className="truncate font-mono text-[0.68rem] text-foreground/40">{a.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {serverError && (
           <p className="rounded-sm border border-oxblood-bright/25 bg-oxblood-bright/10 px-3 py-2 text-center text-[0.8rem] text-oxblood-bright">
