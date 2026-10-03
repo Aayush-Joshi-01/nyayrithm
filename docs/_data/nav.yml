@@ -19,5 +19,7 @@
       url: /llm-providers/
     - title: Architecture
       url: /architecture/
+    - title: Legal accuracy
+      url: /legal-accuracy/
     - title: Deployment
       url: /deployment/

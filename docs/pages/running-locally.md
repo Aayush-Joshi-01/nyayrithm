@@ -127,6 +127,9 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/1
 REDIS_URL=redis://localhost:6379/2
 
+# Auth: no Keycloak needed locally (pairs with NEXT_PUBLIC_DEV_MODE=true)
+AUTH_DEV_BYPASS=true
+
 # LLM, Gemini free tier
 LLM_DEFAULT_PROVIDER=gemini
 GEMINI_API_KEY=AIza...your-key...
@@ -285,7 +288,7 @@ make migrate-create
 make migrate-down
 ```
 
-Migrations only apply to SQL backends (PostgreSQL and SQLite). MongoDB and DynamoDB are schema-less, collections/tables are created automatically on first write.
+Migrations only apply to SQL backends (PostgreSQL and SQLite). MongoDB is schema-less, collections are created automatically on first write.
 
 ---
 
@@ -298,14 +301,15 @@ make test
 # Backend tests only
 cd backend && uv run pytest -v
 
-# Specific test file
-cd backend && uv run pytest tests/test_agents.py -v
+# One area at a time
+cd backend && uv run pytest tests/unit -v          # auth, citations, procedure, audit, ingestion
+cd backend && uv run pytest tests/api -v           # every route, ownership, WebSocket, full simulation
 
 # Frontend linting + type check
 cd frontend && bun run lint && bun run tsc --noEmit
 ```
 
-Tests use an in-memory SQLite database and mock LLM/vector store responses, no real API calls are made.
+Tests use a throwaway SQLite database per test, a locally generated RSA key standing in for Keycloak, and scripted LLMs and stubbed vector stores. They need no Docker services and make no network calls.
 
 ---
 

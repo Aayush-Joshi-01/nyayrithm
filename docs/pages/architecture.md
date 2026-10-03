@@ -19,6 +19,7 @@ This document covers system design decisions, data flow, and the reasoning behin
 - [Agent system](#agent-system)
 - [RAG pipeline](#rag-pipeline)
 - [Simulation engine](#simulation-engine)
+- [Legal accuracy](/legal-accuracy/)
 - [WebSocket streaming](#websocket-streaming)
 - [Infrastructure flexibility](#infrastructure-flexibility)
 - [Frontend & production topology](#frontend--production-topology)
@@ -47,7 +48,7 @@ Services             AgentOrchestrator
   │               └── maybe_spawn()
   │
   ▼
-Repository[T]  ──►  Postgres / MongoDB / SQLite / DynamoDB
+Repository[T]  ──►  Postgres / MongoDB / SQLite
   │
   ▼
 Celery workers (evidence queue + simulation queue)
@@ -122,13 +123,37 @@ The login/register API routes run **server-side inside the Docker network**. Ins
 | `frontend/src/app/api/auth/login/route.ts` | `POST /api/auth/login`, Direct Access Grant → httpOnly cookies |
 | `frontend/src/app/api/auth/register/route.ts` | `POST /api/auth/register`, Admin API user creation → auto-login |
 | `frontend/src/app/api/auth/logout/route.ts` | `POST /api/auth/logout`, clears cookies |
+| `frontend/src/app/api/auth/token/route.ts` | `GET /api/auth/token`, returns/refreshes the bearer token for the API client |
 | `frontend/src/middleware.ts` | Protects `/dashboard/*` via cookie check |
+| `backend/app/core/auth.py` | Keycloak JWKS verification (`KeycloakVerifier`) |
+| `backend/app/services/access.py` | Ownership checks shared by every route |
 | `infra/keycloak/realm-export.json` | Realm config auto-imported on first Keycloak start |
 | `frontend/.env.local` | Local dev env vars (created by `make env`, git-ignored) |
 
+### Backend token verification
+
+The FastAPI backend does not trust the frontend. Every `/api/v1` route, and the simulation WebSocket, requires a Keycloak-issued bearer token, verified in `backend/app/core/auth.py`:
+
+- The token must be **RS256**-signed by a key published in the realm's JWKS (`/realms/nyayrithm/protocol/openid-connect/certs`). Keys are cached and refetched once when an unknown `kid` appears, so key rotation needs no restart. `HS256` and `alg: none` tokens are rejected outright.
+- The `iss` claim must be one of the realm URLs derived from `KEYCLOAK_URL` and `NEXT_PUBLIC_KEYCLOAK_URL` (tokens minted from inside Docker carry the internal host, browser-minted ones the public host). Add others with `KEYCLOAK_EXTRA_ISSUERS`.
+- Expired tokens are rejected (10 s clock leeway). The `sub` claim becomes the owner id; the `admin` realm role may read any case.
+
+The browser cannot read the httpOnly cookies, so `GET /api/auth/token` (a Next.js route) returns the access token, refreshing it from the refresh-token cookie when it has expired. `frontend/src/lib/api.ts` attaches it as `Authorization: Bearer …`; the WebSocket sends it as `?token=` because browsers cannot set headers on a socket. A rejected socket is closed with code `4401` (bad token) or `4403` (not your simulation).
+
+**Ownership.** A case belongs to the user who created it; simulations, evidence, agents and turns inherit access from their case (`backend/app/services/access.py`). Anything you do not own answers `404`, exactly like something that does not exist, so ids cannot be probed.
+
 ### Dev mode bypass
 
-Set `NEXT_PUBLIC_DEV_MODE=true` in `.env` to skip all authentication checks in local dev. This is useful when Keycloak is not running.
+For local work without Keycloak, set both:
+
+```
+NEXT_PUBLIC_DEV_MODE=true   # frontend: skip the login wall
+AUTH_DEV_BYPASS=true        # backend: token-less requests act as DEV_USER_ID (default user-001)
+```
+
+The bypass only applies to requests that carry **no** token; a presented but invalid token is still a 401. The backend refuses to start with `AUTH_DEV_BYPASS=true` when `APP_ENV=production`.
+
+Data created before auth existed is owned by `user-001`. To hand it to a real user, run `UPDATE cases SET created_by = '<keycloak sub>' WHERE created_by = 'user-001';` (and the same for `simulations`).
 
 ---
 
@@ -137,7 +162,7 @@ Set `NEXT_PUBLIC_DEV_MODE=true` in `.env` to skip all authentication checks in l
 All models are **plain Python `@dataclass` objects**: no SQLAlchemy ORM, no Beanie, no ODM. This is intentional:
 
 - The application layer is completely decoupled from the storage layer
-- The same dataclass can be persisted to PostgreSQL (as rows), MongoDB (as documents), SQLite (as rows with JSON blobs), or DynamoDB (as attribute maps)
+- The same dataclass can be persisted to PostgreSQL (as rows), MongoDB (as documents), or SQLite (as rows with JSON blobs)
 - Serialisation/deserialisation is handled entirely inside each `Repository` adapter
 
 ### JSON/dict fields
@@ -149,7 +174,6 @@ Fields typed as `dict` or `list` are stored differently per backend:
 | PostgreSQL | `JSONB` column |
 | MongoDB | Native embedded document |
 | SQLite | JSON-serialised `TEXT` column |
-| DynamoDB | Native `Map` or `List` attribute |
 
 The adapter translates transparently, the application always sees a Python `dict` or `list`.
 
@@ -394,7 +418,12 @@ SimulationEngine.run_next_turn(sim_id)
   ↓
 Load Simulation + AgentGraph from DB
   ↓
-Determine next agent from turn_order[current_turn % len(turn_order)]
+Determine next agent
+  ├── courtroom / deposition: the procedure engine names the role for this stage
+  │   (and hands the floor to the judge after a counsel's objection)
+  └── strategy: turn_order[current_turn % len(turn_order)]
+  ↓
+Build context: stage directive, applicable-law excerpts, any registry correction
   ↓
 Broadcast turn.started event via WebSocket
   ↓
@@ -406,10 +435,12 @@ Process SpawnRequests from TurnResult
   ├── Persist new AgentDefinition to DB
   └── Broadcast agent.spawned event
   ↓
+Review the turn: verify legal citations, check procedure, append audit events
+  ↓
 Check for contradictions (_check_contradiction)
   └── If detected: broadcast conflict.detected, set flag for judge interjection
   ↓
-Persist Turn to DB (content, citations, spawned_agents, token_count, latency_ms)
+Persist Turn to DB (content, citations, legal review + procedure in metadata, token_count, latency_ms)
   ↓
 Increment Simulation.current_turn, persist
   ↓
