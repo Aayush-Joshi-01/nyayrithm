@@ -5,6 +5,8 @@ import sqlite3
 
 import pytest
 
+import tests.conftest
+
 H = "user-a"
 
 
@@ -178,25 +180,22 @@ async def test_delete_removes_agents_turns_and_audit_but_not_the_case(
     assert (await client.get(f"/api/v1/simulations/{sim['id']}", headers=h)).status_code == 404
     assert (await client.get(f"/api/v1/cases/{case}", headers=h)).status_code == 200
     conn = sqlite3.connect(db_path)
-    for table in ("agent_definitions", "turns", "audit_events"):
+    for table in ("agent_definitions", "audit_events"):
         count = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE simulation_id = ?",
                              [sim["id"]]).fetchone()[0]
         assert count == 0, table
     conn.close()
+    assert tests.conftest._SYNC_MONGO["turns"].count_documents({"simulation_id": sim["id"]}) == 0
 
 
 # ── turns ─────────────────────────────────────────────────────────────────────
 async def test_turns_expose_legal_review_and_procedure(client, auth_headers, seed, db_path):
     _, sim = await make_sim(client, auth_headers, seed, config={"seed_default_agents": False})
     agent = seed.agent(sim["id"])
-    turn = seed.turn(sim["id"], agent, content="Section 9999 BNS")
-    conn = sqlite3.connect(db_path)
-    conn.execute("UPDATE turns SET metadata = ? WHERE id = ?", [json.dumps({
+    seed.turn(sim["id"], agent, content="Section 9999 BNS", metadata={
         "legal_review": {"status": "flagged", "citations": []},
         "procedure": {"stage": "opening", "violations": []},
-    }), turn])
-    conn.commit()
-    conn.close()
+    })
 
     body = (await client.get(f"/api/v1/simulations/{sim['id']}/turns",
                              headers=auth_headers(H))).json()

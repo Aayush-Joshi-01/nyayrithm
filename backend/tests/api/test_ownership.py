@@ -194,7 +194,7 @@ async def test_dev_bypass_acts_as_the_dev_user_without_a_token(
 ):
     from app.config import get_settings
 
-    own = seed.case("user-001", title="Pre-auth data")
+    own = seed.case("00000000-0000-4000-8000-0000000000b1", title="Pre-auth data")
     seed.case("user-a", title="Someone else's")
     monkeypatch.setenv("AUTH_DEV_BYPASS", "true")
     get_settings.cache_clear()

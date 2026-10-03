@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.session import get_session
+from app.db.stores import open_stores
 from app.legal.audit import GENESIS_HASH, AuditLog, compute_hash, sha256_text, verify_chain
 from app.models.audit import AuditEvent
 
@@ -98,8 +98,8 @@ def test_sha256_text_is_stable():
 # ── persisted log ─────────────────────────────────────────────────────────────
 async def test_log_appends_a_linked_chain_and_verifies(db_path: Path):
     sim = str(uuid4())
-    async for session in get_session():
-        log = AuditLog(session)
+    async with open_stores() as stores:
+        log = AuditLog(stores)
         first = await log.append(sim, "simulation.started", "user:a", {"mode": "courtroom"})
         second = await log.append(sim, "turn.generated", "agent:x", {"turn_number": 0})
         third = await log.append(sim, "simulation.completed", "system", {"total_turns": 1})
@@ -115,8 +115,8 @@ async def test_log_appends_a_linked_chain_and_verifies(db_path: Path):
 
 async def test_chains_are_independent_per_simulation(db_path: Path):
     a, b = str(uuid4()), str(uuid4())
-    async for session in get_session():
-        log = AuditLog(session)
+    async with open_stores() as stores:
+        log = AuditLog(stores)
         await log.append(a, "x", "u", {})
         await log.append(a, "y", "u", {})
         first_b = await log.append(b, "x", "u", {})
@@ -125,8 +125,8 @@ async def test_chains_are_independent_per_simulation(db_path: Path):
 
 async def test_tampering_in_the_database_is_caught(db_path: Path):
     sim = str(uuid4())
-    async for session in get_session():
-        log = AuditLog(session)
+    async with open_stores() as stores:
+        log = AuditLog(stores)
         await log.append(sim, "simulation.started", "user:a", {"mode": "courtroom"})
         await log.append(sim, "turn.generated", "agent:x", {"turn_number": 0})
         await log.append(sim, "turn.generated", "agent:x", {"turn_number": 1})
@@ -136,15 +136,15 @@ async def test_tampering_in_the_database_is_caught(db_path: Path):
     conn.commit()
     conn.close()
 
-    async for session in get_session():
-        result = await AuditLog(session).verify(sim)
+    async with open_stores() as stores:
+        result = await AuditLog(stores).verify(sim)
         assert not result["valid"] and result["broken_at"] == 1
 
 
 async def test_pagination_does_not_hide_events_from_verification(db_path: Path):
     sim = str(uuid4())
-    async for session in get_session():
-        log = AuditLog(session)
+    async with open_stores() as stores:
+        log = AuditLog(stores)
         for i in range(7):
             await log.append(sim, "turn.generated", "agent:x", {"turn_number": i})
         page, total = await log.events(sim, page=2, size=3)

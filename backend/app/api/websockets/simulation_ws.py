@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from app.api.websockets.event_bus import make_broadcast_fn, subscribe
 from app.core.auth import get_verifier
 from app.core.exceptions import NotFoundError
-from app.db.session import get_session
+from app.db.stores import open_stores
 from app.dependencies import authenticate_token
 from app.services.access import AccessService
 
@@ -53,14 +53,11 @@ async def _authorize(websocket: WebSocket, simulation_id: str) -> int | None:
     except ValueError:
         return WS_FORBIDDEN
 
-    gen = get_session()
-    session = await gen.__anext__()
     try:
-        await AccessService(session, user).simulation(simulation_id)
+        async with open_stores() as stores:
+            await AccessService(stores, user).simulation(simulation_id)
     except NotFoundError:
         return WS_FORBIDDEN
-    finally:
-        await gen.aclose()
     return None
 
 

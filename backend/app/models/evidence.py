@@ -18,8 +18,8 @@ class Evidence:
     id: UUID = field(default_factory=uuid4)
     description: str = ""
     file_size: int = 0
-    raw_text: str | None = None
-    transcription: str | None = None
+    org_id: UUID | None = None
+    # Extracted text / transcripts live in MongoDB (EvidenceContent), not on this row.
     embedder_used: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
     status: str = "pending"  # pending | processing | indexed | error

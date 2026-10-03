@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.core.auth import AuthenticatedUser
 from app.core.exceptions import PayloadTooLargeError, ValidationError
 from app.db.factory import get_repository
+from app.db.stores import Stores
 from app.ingestion.factory import detect_modality
 from app.models.evidence import Evidence
 from app.schemas.turn import SearchResultSchema
@@ -46,10 +47,10 @@ def guess_type(mime: str) -> str:
 
 
 class EvidenceService:
-    def __init__(self, session: Any, user: AuthenticatedUser) -> None:
+    def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
         self.user = user
-        self.repo = get_repository("evidence", session)
-        self.access = AccessService(session, user)
+        self.repo = get_repository("evidence", stores)
+        self.access = AccessService(stores, user)
 
     async def upload(
         self,

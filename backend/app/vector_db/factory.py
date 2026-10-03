@@ -15,9 +15,5 @@ def get_vector_store() -> VectorStore:
         from app.vector_db.qdrant import QdrantVectorStore
         return QdrantVectorStore(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY)
 
-    if backend == "chroma":
-        from app.vector_db.chroma import ChromaVectorStore
-        return ChromaVectorStore(host=settings.CHROMA_HOST, port=settings.CHROMA_PORT)
-
     raise NotImplementedError(f"Vector DB backend '{backend}' not implemented. "
                               f"Add a class to app/vector_db/ and register it here.")

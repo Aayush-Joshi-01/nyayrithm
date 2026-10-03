@@ -7,6 +7,7 @@ from uuid import UUID
 from app.core.auth import AuthenticatedUser
 from app.core.exceptions import ConflictError, NotFoundError
 from app.db.factory import get_repository
+from app.db.stores import Stores
 from app.legal.audit import AuditLog
 from app.models.agent import AgentDefinition
 from app.models.simulation import Simulation
@@ -25,13 +26,13 @@ def role_defaults(role: str) -> tuple[str, str]:
 
 
 class SimulationService:
-    def __init__(self, session: Any, user: AuthenticatedUser) -> None:
-        self.session = session
+    def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
+        self.stores = stores
         self.user = user
-        self.sims = get_repository("simulation", session)
-        self.agents = get_repository("agent", session)
-        self.access = AccessService(session, user)
-        self.audit = AuditLog(session)
+        self.sims = get_repository("simulation", stores)
+        self.agents = get_repository("agent", stores)
+        self.access = AccessService(stores, user)
+        self.audit = AuditLog(stores)
 
     async def _record(
         self, sim_id: UUID, event: str, payload: dict[str, Any] | None = None
@@ -120,7 +121,7 @@ class SimulationService:
         # self-referential parent_agent_id link on agent_definitions.
         by_sim = {"simulation_id": str(sim_id)}
         for model in ("audit", "turn", "agent"):
-            await get_repository(model, self.session).delete_where(by_sim)
+            await get_repository(model, self.stores).delete_where(by_sim)
         await self.sims.delete(str(sim_id))
 
     async def clone(self, sim_id: UUID) -> Simulation:

@@ -6,16 +6,17 @@ from uuid import UUID
 
 from app.core.auth import AuthenticatedUser
 from app.db.factory import get_repository
+from app.db.stores import Stores
 from app.models.case import Case
 from app.schemas.case import CaseCreate, CaseUpdate
 from app.services.access import AccessService
 
 
 class CaseService:
-    def __init__(self, session: Any, user: AuthenticatedUser) -> None:
+    def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
         self.user = user
-        self.repo = get_repository("case", session)
-        self.access = AccessService(session, user)
+        self.repo = get_repository("case", stores)
+        self.access = AccessService(stores, user)
 
     async def create(self, body: CaseCreate) -> Case:
         case = Case(

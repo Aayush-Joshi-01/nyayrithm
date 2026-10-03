@@ -21,7 +21,7 @@ class SearchResult:
 
 @runtime_checkable
 class VectorStore(Protocol):
-    """Abstract vector store. Implementations: qdrant, chroma, pinecone, weaviate, pgvector."""
+    """Abstract vector store. Implementation: qdrant (add others by implementing this protocol)."""
 
     async def upsert(self, collection: str, chunks: list[VectorChunk]) -> None: ...
 

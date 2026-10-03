@@ -30,7 +30,7 @@ run_simulation_turn = run_simulation
 async def _run_async(simulation_id: str) -> None:
     from app.api.websockets.event_bus import make_broadcast_fn
     from app.db.factory import get_repository
-    from app.db.session import get_session
+    from app.db.stores import open_stores
     from app.simulation.engine import SimulationEngine
 
     broadcast_fn = make_broadcast_fn(simulation_id)
@@ -39,8 +39,8 @@ async def _run_async(simulation_id: str) -> None:
         await engine.run_simulation(simulation_id, broadcast_fn=broadcast_fn)
     except Exception as exc:
         logger.error("simulation_run_failed", simulation_id=simulation_id, error=str(exc))
-        async for session in get_session():
-            sim_repo = get_repository("simulation", session)
+        async with open_stores() as stores:
+            sim_repo = get_repository("simulation", stores)
             await sim_repo.update(simulation_id, {
                 "status": "failed",
                 "ended_at": datetime.now(timezone.utc),

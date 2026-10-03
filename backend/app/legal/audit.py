@@ -16,6 +16,7 @@ from typing import Any
 from uuid import UUID
 
 from app.db.factory import get_repository
+from app.db.stores import Stores
 from app.models.audit import AuditEvent
 
 GENESIS_HASH = "0" * 64
@@ -66,9 +67,9 @@ def verify_chain(events: list[AuditEvent]) -> dict[str, Any]:
 
 
 class AuditLog:
-    def __init__(self, session: Any) -> None:
-        self.session = session
-        self.repo = get_repository("audit", session)
+    def __init__(self, stores: Stores) -> None:
+        self.stores = stores
+        self.repo = get_repository("audit", stores)
 
     async def _last(self, simulation_id: UUID | str) -> AuditEvent | None:
         items, _ = await self.repo.list(
@@ -94,7 +95,7 @@ class AuditLog:
                 return await self.repo.create(event)
             except Exception as exc:  # noqa: BLE001 - unique (simulation_id, seq) race; retry
                 last_error = exc
-                rollback = getattr(self.session, "rollback", None)
+                rollback = getattr(self.stores.pg, "rollback", None)
                 if rollback:
                     await rollback()
         raise RuntimeError(f"Could not append audit event: {last_error}")

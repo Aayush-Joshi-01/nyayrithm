@@ -22,7 +22,7 @@ async def authenticate_token(
 ) -> AuthenticatedUser:
     """Shared by the HTTP dependency and the WebSocket handshake."""
     if not token:
-        if get_settings().AUTH_DEV_BYPASS:
+        if get_settings().auth_bypass:
             return dev_user()
         raise _unauthorized("Not authenticated")
     try:

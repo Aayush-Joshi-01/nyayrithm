@@ -6,6 +6,7 @@ from uuid import UUID
 from app.core.auth import AuthenticatedUser
 from app.core.exceptions import NotFoundError
 from app.db.factory import get_repository
+from app.db.stores import Stores
 from app.models.agent import AgentDefinition
 from app.models.case import Case
 from app.models.evidence import Evidence
@@ -20,12 +21,12 @@ class AccessService:
     as *not found* (404) rather than forbidden, so ids cannot be probed.
     """
 
-    def __init__(self, session: Any, user: AuthenticatedUser) -> None:
-        self.session = session
+    def __init__(self, stores: Stores, user: AuthenticatedUser) -> None:
+        self.stores = stores
         self.user = user
 
     def _repo(self, model: str):
-        return get_repository(model, self.session)
+        return get_repository(model, self.stores)
 
     def _can_see(self, case: Case) -> bool:
         return self.user.is_admin or case.created_by == self.user.id

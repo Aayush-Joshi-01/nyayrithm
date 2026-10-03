@@ -31,7 +31,7 @@ async def list_turns(
     access: AccessService = Depends(get_access),
 ):
     await access.simulation(sim_id)
-    repo = get_repository("turn", access.session)
+    repo = get_repository("turn", access.stores)
     items, total = await repo.list(
         filters={"simulation_id": str(sim_id)}, page=page, size=size, order_by="turn_number"
     )
@@ -46,7 +46,7 @@ async def edit_turn(
     access: AccessService = Depends(get_access),
 ):
     await access.simulation(sim_id)
-    repo = get_repository("turn", access.session)
+    repo = get_repository("turn", access.stores)
     turn = await repo.get(str(turn_id))
     if not turn or str(turn.simulation_id) != str(sim_id):
         raise NotFoundError("Turn", str(turn_id))
@@ -56,7 +56,7 @@ async def edit_turn(
     })
     # Human edits are the one way the record can diverge from what the agent said, so the
     # audit trail keeps both versions' hashes.
-    await AuditLog(access.session).append(sim_id, "turn.edited", f"user:{access.user.id}", {
+    await AuditLog(access.stores).append(sim_id, "turn.edited", f"user:{access.user.id}", {
         "turn_id": str(turn_id),
         "turn_number": turn.turn_number,
         "original_sha256": sha256_text(turn.content_edited or turn.content),

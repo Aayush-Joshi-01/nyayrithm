@@ -126,5 +126,9 @@ def get_verifier() -> KeycloakVerifier:
 def dev_user() -> AuthenticatedUser:
     settings = get_settings()
     return AuthenticatedUser(
-        id=settings.DEV_USER_ID, username="dev", roles=frozenset({"user"})
+        id=settings.DEV_USER_ID,
+        email="owner@devfirm.nyayrithm.dev",
+        username="dev",
+        # In open dev mode the one bypass identity is both the firm owner and the platform admin.
+        roles=frozenset({"user", "platform_admin"}),
     )

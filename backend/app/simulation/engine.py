@@ -173,23 +173,19 @@ class SimulationEngine:
         import asyncio
 
         from app.config import get_settings
-        from app.db.session import get_session
         from app.db.factory import get_repository
+        from app.db.stores import open_stores
 
         turn_delay = get_settings().SIMULATION_TURN_DELAY_SECONDS
 
         async def _with_session(fn):
-            gen = get_session()
-            session = await gen.__anext__()
-            try:
-                return await fn(session)
-            finally:
-                await gen.aclose()
+            async with open_stores() as stores:
+                return await fn(stores)
 
         # Load static case metadata once.
-        async def _load(session):
-            sim_repo = get_repository("simulation", session)
-            case_repo = get_repository("case", session)
+        async def _load(stores):
+            sim_repo = get_repository("simulation", stores)
+            case_repo = get_repository("case", stores)
             simulation = await sim_repo.get(simulation_id)
             if not simulation or simulation.status not in _ACTIVE_STATUSES:
                 return None
@@ -209,11 +205,11 @@ class SimulationEngine:
         max_turns = case_metadata.pop("_max_turns")
 
         # ── Turn loop ────────────────────────────────────────────────────────
-        async def _one_turn(session) -> str:
+        async def _one_turn(stores) -> str:
             """Returns 'continue' | 'stop' | 'done'."""
-            sim_repo = get_repository("simulation", session)
-            agent_repo = get_repository("agent", session)
-            turn_repo = get_repository("turn", session)
+            sim_repo = get_repository("simulation", stores)
+            agent_repo = get_repository("agent", stores)
+            turn_repo = get_repository("turn", stores)
 
             simulation = await sim_repo.get(simulation_id)
             if not simulation:
@@ -248,7 +244,7 @@ class SimulationEngine:
                 size=500, order_by="turn_number",
             )
 
-            audit = AuditLog(session)
+            audit = AuditLog(stores)
 
             async def audit_fn(event_type: str, actor: str, payload: dict) -> None:
                 await audit.append(simulation_id, event_type, actor, payload)
@@ -300,15 +296,15 @@ class SimulationEngine:
         if outcome == "stop":
             return
 
-        async def _finish(session) -> int:
-            sim_repo = get_repository("simulation", session)
+        async def _finish(stores) -> int:
+            sim_repo = get_repository("simulation", stores)
             final = await sim_repo.get(simulation_id)
             total = final.current_turn if final else 0
             await sim_repo.update(simulation_id, {
                 "status": "completed",
                 "ended_at": datetime.now(timezone.utc),
             })
-            await AuditLog(session).append(
+            await AuditLog(stores).append(
                 simulation_id, "simulation.completed", "system", {"total_turns": total}
             )
             return total

@@ -18,20 +18,18 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
-    # Database backend. Only backends with a repository adapter are accepted, so a
-    # typo or an unbuilt option fails at startup instead of on the first request.
-    DB_BACKEND: Literal["postgres", "mongodb", "sqlite"] = "postgres"
-    DATABASE_URL: str = "postgresql+asyncpg://nyayrithm:secret@localhost:5432/nyayrithm"
-    MONGODB_URI: str = "mongodb://localhost:27017"
+    # Two stores, split by data shape (see app/db/factory.py):
+    #   PostgreSQL - firms, users, plans, cases, simulations, agents, the audit chain
+    #   MongoDB    - turns, extracted evidence text, LLM usage events
+    # DATABASE_URL may be sqlite+aiosqlite:/// for tests only.
+    DATABASE_URL: str = "postgresql+asyncpg://nyayrithm:devpassword@localhost:5432/nyayrithm"
+    MONGODB_URI: str = "mongodb://nyayrithm:devpassword@localhost:27017/?authSource=admin"
     MONGODB_DB: str = "nyayrithm"
-    SQLITE_PATH: str = "./nyayrithm.db"
 
-    # Vector DB backend: qdrant | chroma
-    VECTOR_DB_BACKEND: Literal["qdrant", "chroma"] = "qdrant"
+    # Vector store: qdrant
+    VECTOR_DB_BACKEND: Literal["qdrant"] = "qdrant"
     QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str | None = None
-    CHROMA_HOST: str = "localhost"
-    CHROMA_PORT: int = 8001
 
     # File storage backend: local | s3 | minio
     STORAGE_BACKEND: Literal["local", "s3", "minio"] = "local"
@@ -76,9 +74,24 @@ class Settings(BaseSettings):
     # are always accepted.
     KEYCLOAK_EXTRA_ISSUERS: str = ""
     AUTH_JWKS_CACHE_SECONDS: int = 3600
-    # Local-dev escape hatch: requests with no token act as DEV_USER_ID. Never in production.
-    AUTH_DEV_BYPASS: bool = False
-    DEV_USER_ID: str = "user-001"
+    # Development authentication. Never available in production (validated below).
+    #   off          normal: every request needs a valid Keycloak token
+    #   open         token-less requests act as the seeded dev user (no login in either portal)
+    #   credentials  real Keycloak login with the static accounts in keycloak/realm-dev.json
+    DEV_AUTH_MODE: Literal["off", "open", "credentials"] = "off"
+    AUTH_DEV_BYPASS: bool = False  # legacy switch; equivalent to DEV_AUTH_MODE=open
+    # The seeded dev firm owner (matches keycloak/realm-dev.json).
+    DEV_USER_ID: str = "00000000-0000-4000-8000-0000000000b1"
+    # Seed "Dev Firm", plans and a sample case at startup (idempotent). Development only.
+    SEED_DEV_DATA: bool = False
+
+    # Public URL of the firm portal (used in invite links) and outgoing email.
+    APP_URL: str = "http://localhost:3000"
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = "no-reply@nyayrithm.local"
 
     # Legal accuracy. Extra jurisdiction packs (JSON, same schema as app/legal/packs) are
     # loaded from LEGAL_PACKS_DIR in addition to the bundled ones.
@@ -92,11 +105,18 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _forbid_insecure_production(self) -> Settings:
         if self.APP_ENV == "production":
-            if self.AUTH_DEV_BYPASS:
-                raise ValueError("AUTH_DEV_BYPASS must not be enabled when APP_ENV=production")
+            if self.auth_bypass or self.DEV_AUTH_MODE != "off":
+                raise ValueError("Dev authentication must not be enabled when APP_ENV=production")
+            if self.SEED_DEV_DATA:
+                raise ValueError("SEED_DEV_DATA must not be enabled when APP_ENV=production")
             if self.SECRET_KEY == "change-me-in-production":
                 raise ValueError("SECRET_KEY must be set when APP_ENV=production")
         return self
+
+    @property
+    def auth_bypass(self) -> bool:
+        """True when token-less requests are allowed to act as the dev user."""
+        return self.AUTH_DEV_BYPASS or self.DEV_AUTH_MODE == "open"
 
     @property
     def keycloak_realm_path(self) -> str:

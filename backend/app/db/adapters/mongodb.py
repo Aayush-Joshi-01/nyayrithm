@@ -16,7 +16,7 @@ def _serialize(value: Any) -> Any:
     if isinstance(value, UUID):
         return str(value)
     if isinstance(value, datetime):
-        return value.isoformat()
+        return value  # stays a BSON date so it sorts, range-queries and aggregates
     if isinstance(value, dict):
         return {k: _serialize(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -88,6 +88,9 @@ class MongoRepository(BaseRepository[T], Generic[T]):
     async def delete(self, id: str) -> bool:
         result = await self.col.delete_one({"id": id})
         return result.deleted_count > 0
+
+    async def count(self, filters: dict[str, Any] | None = None) -> int:
+        return await self.col.count_documents(filters or {})
 
     async def delete_where(self, filters: dict[str, Any]) -> int:
         """Delete every document matching all ``filters``; returns the number removed."""

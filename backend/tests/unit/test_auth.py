@@ -151,7 +151,7 @@ async def test_dev_bypass_only_applies_without_a_token(
     get_settings.cache_clear()
     verifier = make_verifier(keycloak)
 
-    assert (await authenticate_token(None, verifier)).id == "user-001"
+    assert (await authenticate_token(None, verifier)).id == "00000000-0000-4000-8000-0000000000b1"
     # A presented-but-invalid token is still rejected; bypass is not a skip-validation flag.
     with pytest.raises(HTTPException):
         await authenticate_token("garbage", verifier)
@@ -166,7 +166,7 @@ def test_production_refuses_dev_bypass(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("AUTH_DEV_BYPASS", "true")
     monkeypatch.setenv("SECRET_KEY", "a-real-secret")
-    with pytest.raises(ValidationError, match="AUTH_DEV_BYPASS"):
+    with pytest.raises(ValidationError, match="Dev authentication"):
         Settings()
 
 
@@ -187,6 +187,6 @@ def test_unimplemented_backends_fail_at_startup(monkeypatch: pytest.MonkeyPatch)
 
     from app.config import Settings
 
-    monkeypatch.setenv("DB_BACKEND", "dynamodb")
+    monkeypatch.setenv("VECTOR_DB_BACKEND", "chroma")
     with pytest.raises(ValidationError):
         Settings()

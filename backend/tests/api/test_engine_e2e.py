@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import sqlite3
+import tests.conftest
 from collections.abc import AsyncIterator
 
 import pytest
@@ -145,10 +145,9 @@ async def test_full_courtroom_simulation(client, auth_headers, seed, queued, scr
     assert verdict["valid"] and verdict["events"] == len(kinds)
 
     # ── provenance persisted on the turn row itself ───────────────────────────
-    conn = sqlite3.connect(db_path)
-    (meta,) = conn.execute("SELECT metadata FROM turns WHERE turn_number = 0").fetchone()
-    conn.close()
-    assert '"prompt_sha256"' in meta and '"scripted-1"' in meta
+    doc = tests.conftest._SYNC_MONGO["turns"].find_one({"simulation_id": sim, "turn_number": 0})
+    assert len(doc["metadata"]["prompt_sha256"]) == 64 and doc["metadata"]["model"] == "scripted-1"
+    assert doc["retrieved_chunks"] == []
 
 
 async def test_simulation_for_an_unsupported_jurisdiction_runs_without_legal_review(

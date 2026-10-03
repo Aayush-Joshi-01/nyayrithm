@@ -9,6 +9,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import httpx
+import mongomock
 import pytest
 import pytest_asyncio
 from cryptography.hazmat.primitives import serialization
@@ -19,8 +20,9 @@ from jose import jwk, jwt
 os.environ.update({
     "APP_ENV": "development",
     "DEBUG": "false",
-    "DB_BACKEND": "sqlite",
+    "DEV_AUTH_MODE": "off",
     "AUTH_DEV_BYPASS": "false",
+    "SEED_DEV_DATA": "false",
     "KEYCLOAK_URL": "http://keycloak.test:8080",
     "NEXT_PUBLIC_KEYCLOAK_URL": "http://localhost:8080",
     "NEXT_PUBLIC_KEYCLOAK_REALM": "nyayrithm",
@@ -31,6 +33,7 @@ os.environ.update({
 })
 
 ISSUER = "http://localhost:8080/realms/nyayrithm"
+_SYNC_MONGO = None  # set per test by the db_path fixture
 KID = "test-key-1"
 
 SQLITE_SCHEMA = """
@@ -38,12 +41,12 @@ CREATE TABLE cases (
     id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT DEFAULT '',
     country TEXT NOT NULL, jurisdiction TEXT DEFAULT '', legal_system TEXT DEFAULT 'common_law',
     status TEXT DEFAULT 'open', created_by TEXT NOT NULL, metadata TEXT DEFAULT '{}',
-    created_at TEXT, updated_at TEXT
+    org_id TEXT, created_at TEXT, updated_at TEXT
 );
 CREATE TABLE evidence (
     id TEXT PRIMARY KEY, case_id TEXT NOT NULL, title TEXT NOT NULL, description TEXT DEFAULT '',
     evidence_type TEXT NOT NULL, file_path TEXT NOT NULL, file_size INTEGER DEFAULT 0,
-    mime_type TEXT NOT NULL, modality TEXT DEFAULT 'text', raw_text TEXT, transcription TEXT,
+    mime_type TEXT NOT NULL, modality TEXT DEFAULT 'text', org_id TEXT,
     embedder_used TEXT, metadata TEXT DEFAULT '{}', status TEXT DEFAULT 'pending',
     linked_participants TEXT DEFAULT '[]', vector_collection TEXT, chunk_count INTEGER DEFAULT 0,
     tags TEXT DEFAULT '[]', error_message TEXT, indexed_at TEXT, uploaded_by TEXT NOT NULL,
@@ -52,8 +55,8 @@ CREATE TABLE evidence (
 CREATE TABLE simulations (
     id TEXT PRIMARY KEY, case_id TEXT NOT NULL, title TEXT NOT NULL, mode TEXT DEFAULT 'courtroom',
     status TEXT DEFAULT 'draft', current_turn INTEGER DEFAULT 0, max_turns INTEGER DEFAULT 50,
-    turn_order TEXT DEFAULT '[]', config TEXT DEFAULT '{}', started_at TEXT, ended_at TEXT,
-    created_by TEXT NOT NULL, created_at TEXT, updated_at TEXT
+    turn_order TEXT DEFAULT '[]', config TEXT DEFAULT '{}', org_id TEXT, started_at TEXT,
+    ended_at TEXT, created_by TEXT NOT NULL, created_at TEXT, updated_at TEXT
 );
 CREATE TABLE agent_definitions (
     id TEXT PRIMARY KEY, simulation_id TEXT NOT NULL, parent_agent_id TEXT, spawn_reason TEXT,
@@ -63,13 +66,44 @@ CREATE TABLE agent_definitions (
     jurisdiction_context TEXT DEFAULT '{}', status TEXT DEFAULT 'active', initial_instruction TEXT,
     spawned_at TEXT
 );
-CREATE TABLE turns (
-    id TEXT PRIMARY KEY, simulation_id TEXT NOT NULL, agent_id TEXT NOT NULL,
-    turn_number INTEGER NOT NULL, content TEXT NOT NULL, content_edited TEXT,
-    reasoning_trace TEXT DEFAULT '{}', citations TEXT DEFAULT '[]',
-    retrieved_chunks TEXT DEFAULT '[]', spawned_agents TEXT DEFAULT '[]',
-    is_human_override INTEGER DEFAULT 0, token_count INTEGER DEFAULT 0, latency_ms INTEGER DEFAULT 0,
-    metadata TEXT DEFAULT '{}', created_at TEXT
+CREATE TABLE organizations (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL DEFAULT 'active', created_at TEXT, updated_at TEXT
+);
+CREATE TABLE memberships (
+    id TEXT PRIMARY KEY, org_id TEXT NOT NULL, user_id TEXT NOT NULL, email TEXT NOT NULL,
+    role TEXT NOT NULL, display_name TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT, last_seen_at TEXT, UNIQUE (org_id, user_id)
+);
+CREATE TABLE invites (
+    id TEXT PRIMARY KEY, org_id TEXT NOT NULL, email TEXT NOT NULL, role TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE, invited_by TEXT NOT NULL, expires_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', accepted_by TEXT, accepted_at TEXT, created_at TEXT
+);
+CREATE TABLE plans (
+    id TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, seat_limit INTEGER DEFAULT 5,
+    monthly_simulations INTEGER DEFAULT 50, monthly_tokens INTEGER DEFAULT 2000000,
+    max_turns_per_sim INTEGER DEFAULT 100, storage_mb INTEGER DEFAULT 5000,
+    features TEXT DEFAULT '{}', is_active INTEGER DEFAULT 1, created_at TEXT
+);
+CREATE TABLE subscriptions (
+    id TEXT PRIMARY KEY, org_id TEXT NOT NULL UNIQUE, plan_code TEXT NOT NULL,
+    status TEXT DEFAULT 'active', seats INTEGER DEFAULT 5, current_period_start TEXT,
+    current_period_end TEXT, invoice_ref TEXT DEFAULT '', notes TEXT DEFAULT '',
+    set_by TEXT DEFAULT '', created_at TEXT, updated_at TEXT
+);
+CREATE TABLE case_members (
+    id TEXT PRIMARY KEY, case_id TEXT NOT NULL, user_id TEXT NOT NULL, added_by TEXT NOT NULL,
+    created_at TEXT, UNIQUE (case_id, user_id)
+);
+CREATE TABLE usage_counters (
+    id TEXT PRIMARY KEY, org_id TEXT NOT NULL, period TEXT NOT NULL, tokens INTEGER DEFAULT 0,
+    cost_usd REAL DEFAULT 0, simulations INTEGER DEFAULT 0, turns INTEGER DEFAULT 0,
+    updated_at TEXT, UNIQUE (org_id, period)
+);
+CREATE TABLE admin_events (
+    id TEXT PRIMARY KEY, actor TEXT NOT NULL, action TEXT NOT NULL, target_type TEXT DEFAULT '',
+    target_id TEXT DEFAULT '', details TEXT DEFAULT '{}', created_at TEXT
 );
 CREATE TABLE audit_events (
     id TEXT PRIMARY KEY, simulation_id TEXT NOT NULL, seq INTEGER NOT NULL,
@@ -156,11 +190,22 @@ def db_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     conn.commit()
     conn.close()
 
-    monkeypatch.setenv("SQLITE_PATH", str(path))
+    monkeypatch.setenv("DATABASE_URL", f"sqlite+aiosqlite:///{path}")
     monkeypatch.setenv("STORAGE_LOCAL_ROOT", str(tmp_path / "storage"))
     for cached in (get_settings, get_verifier, get_file_storage,
                    db_session._make_engine, db_session._make_session_factory):
         cached.cache_clear()
+
+    # MongoDB is replaced by an in-memory mongomock database shared between the app
+    # (through an async wrapper) and the synchronous Seeder.
+    from mongomock_motor import AsyncMongoMockClient
+
+    sync_client = mongomock.MongoClient(tz_aware=True)
+    monkeypatch.setattr(
+        "app.db.mongo.get_mongo_db",
+        lambda: AsyncMongoMockClient(mock_mongo_client=sync_client)["nyayrithm_test"],
+    )
+    monkeypatch.setattr("tests.conftest._SYNC_MONGO", sync_client["nyayrithm_test"], raising=False)
     yield path
     for cached in (get_settings, get_verifier, get_file_storage,
                    db_session._make_engine, db_session._make_session_factory):
@@ -238,11 +283,18 @@ class Seeder:
             spawned_at="2026-01-01T00:00:00+00:00", **kw,
         )
 
-    def turn(self, sim_id: str, agent_id: str, number: int = 0, content: str = "Hello") -> str:
-        return self._insert(
-            "turns", id=str(uuid.uuid4()), simulation_id=sim_id, agent_id=agent_id,
-            turn_number=number, content=content, created_at="2026-01-01T00:00:00+00:00",
-        )
+    def turn(self, sim_id: str, agent_id: str, number: int = 0, content: str = "Hello",
+             **extra) -> str:
+        """Turns live in MongoDB."""
+        from datetime import datetime, timezone
+
+        turn_id = str(uuid.uuid4())
+        _SYNC_MONGO["turns"].insert_one({
+            "id": turn_id, "simulation_id": sim_id, "agent_id": agent_id,
+            "turn_number": number, "content": content,
+            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc), **extra,
+        })
+        return turn_id
 
     def evidence(self, case_id: str, owner: str = "user-a", **kw) -> str:
         return self._insert(

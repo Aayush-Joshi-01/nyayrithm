@@ -83,7 +83,7 @@ async def list_audit_events(
     access: AccessService = Depends(get_access),
 ):
     await access.simulation(sim_id)
-    events, total = await AuditLog(access.session).events(sim_id, page=page, size=size)
+    events, total = await AuditLog(access.stores).events(sim_id, page=page, size=size)
     return {
         "items": [
             {
@@ -100,7 +100,7 @@ async def list_audit_events(
 @router.get("/simulations/{sim_id}/audit/verify")
 async def verify_audit_chain(sim_id: UUID, access: AccessService = Depends(get_access)):
     await access.simulation(sim_id)
-    return await AuditLog(access.session).verify(sim_id)
+    return await AuditLog(access.stores).verify(sim_id)
 
 
 @router.get("/simulations/{sim_id}/procedure")
