@@ -68,13 +68,22 @@ class InviteService:
     # ── firm side ─────────────────────────────────────────────────────────────
     async def create(self, org_id: UUID | str, email: str, role: str) -> tuple[Invite, str]:
         me = await self.orgs.require_member(org_id, ROLE_OWNER, ROLE_ADMIN)
+        if role == ROLE_OWNER and me.role != ROLE_OWNER:
+            raise ForbiddenError("Only an owner can invite another owner.")
+        return await self._create(org_id, email, role)
+
+    async def create_as_platform(
+        self, org_id: UUID | str, email: str, role: str = ROLE_OWNER
+    ) -> tuple[Invite, str]:
+        """Used by the admin portal to invite a firm's first owner (the firm has no members yet)."""
+        return await self._create(org_id, email, role)
+
+    async def _create(self, org_id: UUID | str, email: str, role: str) -> tuple[Invite, str]:
         email = email.strip().lower()
         if "@" not in email:
             raise ValidationError("Enter a valid email address.")
         if role not in ORG_ROLES:
             raise ValidationError(f"role must be one of {list(ORG_ROLES)}")
-        if role == ROLE_OWNER and me.role != ROLE_OWNER:
-            raise ForbiddenError("Only an owner can invite another owner.")
 
         # Already a member?
         existing, _ = await get_repository("membership", self.stores).list(

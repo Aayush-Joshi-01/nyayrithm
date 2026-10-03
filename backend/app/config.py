@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     # are always accepted.
     KEYCLOAK_EXTRA_ISSUERS: str = ""
     AUTH_JWKS_CACHE_SECONDS: int = 3600
+    # Master-realm admin account the platform-admin portal uses to enable/disable users and
+    # grant roles through Keycloak's admin REST API. Server-side only.
+    KEYCLOAK_ADMIN_USER: str = ""
+    KEYCLOAK_ADMIN_PASS: str = ""
     # Development authentication. Never available in production (validated below).
     #   off          normal: every request needs a valid Keycloak token
     #   open         token-less requests act as the seeded dev user (no login in either portal)

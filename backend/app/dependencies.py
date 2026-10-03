@@ -36,3 +36,13 @@ async def get_current_user(
     verifier: KeycloakVerifier = Depends(get_verifier),
 ) -> AuthenticatedUser:
     return await authenticate_token(credentials.credentials if credentials else None, verifier)
+
+
+async def require_platform_admin(
+    user: AuthenticatedUser = Depends(get_current_user),
+) -> AuthenticatedUser:
+    """The platform operator. Grants access to the admin API only, never to firm data."""
+    if not user.is_platform_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Platform administrator access required.")
+    return user

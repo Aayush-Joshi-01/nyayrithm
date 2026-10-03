@@ -112,6 +112,7 @@ async def nyayrithm_exception_handler(request: Request, exc: NyayrithmError) -> 
         "SEAT_LIMIT": 402,
         "QUOTA_EXCEEDED": 402,
         "GONE": 410,
+        "KEYCLOAK_UNAVAILABLE": 503,
         "PAYLOAD_TOO_LARGE": 413,
         "STORAGE_ERROR": 500,
         "AGENT_ERROR": 500,
