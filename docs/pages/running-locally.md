@@ -1,398 +1,172 @@
 ---
 title: Running locally
-nav_order: 5
+nav_order: 12
 permalink: /running-locally/
 ---
 
-# Running Locally
+# Running locally
 
-This guide covers every way to run Nyayrithm on your machine, from the full Docker stack down to a completely container-free, zero-cost setup.
+Everything runs under Docker Compose, including on your laptop. You need Docker (with Compose)
+and `make`; you do **not** need Python, Node or a database installed. For per-OS installation
+of Docker and the tools, see the [Windows]({{ '/setup/windows/' | relative_url }}),
+[macOS]({{ '/setup/macos/' | relative_url }}) and [Linux]({{ '/setup/linux/' | relative_url }}) guides.
 
----
-
-## Option A: Full Docker stack (simplest)
-
-**Requires:** Docker Desktop (Mac/Windows) or Docker Engine + Compose plugin (Linux)
-
-```bash
-git clone https://github.com/Aayush-Joshi-01/nyayrithm.git
-cd nyayrithm
-
-# Create .env and fill in at least one LLM API key
-make env
-nano .env          # or open in your editor
-
-# Build and start all services
-make dev
-
-# Apply DB migrations
-make migrate
-```
-
-What starts:
-- `backend`: FastAPI on port 8000
-- `celery_worker`: ingestion + simulation task worker
-- `celery_beat`: scheduled tasks
-- `frontend`: Next.js dev server on port 3000
-- `db`: PostgreSQL 16 on port 5432
-- `redis`: Redis 7 on port 6379
-- `qdrant`: Qdrant vector DB on port 6333
-- `minio`: S3-compatible local storage on ports 9000 / 9001
-- `keycloak`: Keycloak 26 identity provider on port 8080
-
-> **Keycloak note:** On first start Keycloak takes ~30 seconds to import the realm. The `nyayrithm` realm and `nyayrithm-app` client are auto-created from `infra/keycloak/realm-export.json`. Admin UI: http://localhost:8080 (`admin` / `admin`).
-
-Open http://localhost:3000.
-
----
-
-## Option B: Minimal Docker (no local Python/Node needed)
-
-If you only want containers for infra services (DB, Redis, Qdrant) and run app code natively:
+## The short version
 
 ```bash
-# Start only infrastructure
-docker compose up db redis qdrant -d
-
-# Backend
-cd backend
-uv pip install -e ".[dev]"
-uv run uvicorn app.main:app --reload --port 8000
-
-# Worker (new terminal)
-cd backend
-uv run celery -A app.tasks.celery_app worker --loglevel=info \
-    -Q evidence,simulation,default
-
-# Frontend (new terminal)
-cd frontend
-bun install
-bun dev
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git && cd nyayrithm
+make env      # creates .env from the development template
+# edit .env: add GEMINI_API_KEY (free at https://aistudio.google.com/app/apikey)
+make dev      # builds and starts the stack, no login needed
 ```
 
----
+Then open:
 
-## Option C: No Docker at all (fully local, zero cost)
+| | URL |
+|---|---|
+| Firm portal | <http://localhost:3000> |
+| Admin portal | <http://localhost:3001> |
+| API docs | <http://localhost:8000/docs> |
+| Keycloak console | <http://localhost:8080> |
+| Mailpit (invitation emails) | <http://localhost:8025> |
+| Qdrant dashboard | <http://localhost:6333/dashboard> |
 
-The lightest possible setup. Uses SQLite, Chroma (in-process), local file storage, and Gemini free tier (or Ollama for fully offline).
+The first start takes several minutes: it pulls images, builds the backend and both portals,
+and Keycloak imports its realm (about thirty seconds). Watch with
+`docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f backend`.
 
-### Prerequisites
+## The two development modes
 
-| Tool | Install |
-|------|---------|
-| Python 3.12+ | https://python.org or `pyenv install 3.12` |
-| `uv` (fast Python package manager) | `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
-| Node.js 20+ | https://nodejs.org or `nvm install 20` |
-| `bun` (JS runtime + package manager) | `curl -fsSL https://bun.sh/install \| bash` |
-| Redis | See below |
+A development stack runs in one of two authentication modes, for **both portals**.
 
-**Redis without Docker:**
-```bash
-# macOS
-brew install redis && brew services start redis
+### Open mode: `make dev`
 
-# Ubuntu/Debian
-sudo apt install redis-server && sudo systemctl start redis
+No login anywhere. Both portals open straight to the dashboard and the API treats token-less
+requests as the seeded dev user: the owner of **Dev Firm**, who is also a platform admin. A
+banner on both portals says "Development mode · open access". This is the fastest way to
+click around.
 
-# Windows (WSL2)
-sudo apt install redis-server && redis-server --daemonize yes
-```
+### Credentials mode: `make dev-creds`
 
-> Redis is needed for Celery. If you want truly zero dependencies, set `CELERY_BROKER_URL=memory://` in `.env` to use an in-memory broker (single-worker, non-persistent, fine for local testing).
+Real sign-in through Keycloak, with static accounts from `keycloak/realm-dev.json` and
+`.env.dev`. The development login screens list them and fill the form when you click one.
+There is a platform admin (for the admin portal), a firm owner and an attorney (for the firm
+portal, in **Dev Firm**). Use this mode to try roles, invitations and the real token flow.
 
-### `.env` for Option C
-
-```env
-# App
-APP_ENV=development
-DEBUG=true
-SECRET_KEY=local-dev-secret-change-me
-CORS_ORIGINS=["http://localhost:3000"]
-
-# DB, SQLite (no container)
-DB_BACKEND=sqlite
-SQLITE_PATH=./nyayrithm.db
-
-# Vector DB, Chroma (runs in-process)
-VECTOR_DB_BACKEND=chroma
-CHROMA_HOST=localhost
-CHROMA_PORT=8001
-
-# Storage, local filesystem
-STORAGE_BACKEND=local
-STORAGE_LOCAL_ROOT=./storage
-
-# Task queue
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/1
-REDIS_URL=redis://localhost:6379/2
-
-# Auth: no Keycloak needed locally (pairs with NEXT_PUBLIC_DEV_MODE=true)
-AUTH_DEV_BYPASS=true
-
-# LLM, Gemini free tier
-LLM_DEFAULT_PROVIDER=gemini
-GEMINI_API_KEY=AIza...your-key...
-
-# Embedder, local sentence-transformers (no API key)
-EMBEDDER_BACKEND=sentence-transformers
-EMBEDDING_DIMENSION=384
-
-# Auth
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
-
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_WS_URL=ws://localhost:8000
-```
-
-### Start the app (Option C)
-
-Open three terminals:
-
-**Terminal 1, API server**
-```bash
-cd backend
-uv pip install -e ".[dev]"
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-**Terminal 2, Celery worker**
-```bash
-cd backend
-uv run celery -A app.tasks.celery_app worker --loglevel=info \
-    -Q evidence,simulation,default
-```
-
-**Terminal 3, Frontend**
-```bash
-cd frontend
-bun install   # first time only
-bun dev
-```
-
-> **Note:** For native dev (`bun dev` outside Docker), you need `frontend/.env.local` with Keycloak vars. Run `make env`, it creates both `.env` and `frontend/.env.local` automatically.
-
-Open http://localhost:3000.
-
----
-
-## Option D: Fully offline with Ollama
-
-No internet connection required after initial model download.
-
-### Install Ollama
+Switching modes just restarts the stack with a different `DEV_AUTH_MODE`:
 
 ```bash
-# macOS
-brew install ollama
-
-# Linux
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Windows, download installer from https://ollama.com/download
+make dev-creds     # credentials mode
+make dev           # open mode
 ```
 
-### Download models (one-time, needs internet)
+### What gets seeded
+
+With `SEED_DEV_DATA=true` (set by the dev overlay) the backend creates, idempotently:
+the default plans, a firm called **Dev Firm** with an active subscription, memberships for the
+dev owner and attorney, and a sample case. It runs on every start and changes nothing if
+everything is already there.
+
+These accounts and passwords are committed, deliberately, and are for development only. The
+backend refuses to start in production with dev authentication or seeding switched on, and the
+production compose file never mounts the dev realm.
+
+## Trying the features
+
+1. **A proceeding.** In the firm portal open the sample case, add a text file as evidence,
+   create a proceeding (courtroom mode, 12 turns), and start it. Watch it stream.
+2. **An invitation.** In credentials mode, sign in as the owner, go to **Team**, invite
+   `someone@example.com`. Open Mailpit to read the email, or copy the link shown after you
+   send it. Open the link in a private window, register with that address, and accept.
+3. **LLMOps.** Run a proceeding, then open the admin portal's **LLMOps** page.
+4. **Plans.** In the admin portal, lower **Trial**'s token allowance and watch a firm on it hit
+   the pause.
+
+## Configuration
+
+`make env` copies `.env.dev` to `.env` if there is no `.env`. Put secrets (your API key) in
+`.env`, never in `.env.dev`. The most useful settings:
+
+| Variable | Meaning |
+|---|---|
+| `GEMINI_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | At least one, unless you use Ollama. |
+| `LLM_DEFAULT_PROVIDER` | Provider used when an agent's own isn't configured. |
+| `EMBEDDER_BACKEND` | `gemini`, `openai`, or `sentence-transformers` for fully local embeddings. |
+| `SIMULATION_TURN_DELAY_SECONDS` | Pause between turns; keeps free-tier providers under rate limits. |
+| `MAX_UPLOAD_MB` | Largest evidence upload. |
+| `LEGAL_PACKS_DIR` | Extra jurisdiction packs. |
+
+See [LLM providers]({{ '/llm-providers/' | relative_url }}) for models, free tiers and running with no external calls at all.
+
+## Everyday commands
 
 ```bash
-ollama pull llama3.1:8b      # ~4.7 GB, recommended balance
-ollama pull mistral-nemo     # ~7.1 GB, alternative
+make dev            # start (open mode)
+make dev-creds      # start (credentials mode)
+make stop           # stop, keep data
+make logs           # follow backend and worker logs
+make migrate        # run database migrations
+make reset          # wipe ALL local data and start fresh
+make test           # backend test suite
+make lint           # ruff + mypy
+make lint-frontend  # firm portal lint + typecheck
+make lint-admin     # admin portal lint + typecheck
 ```
 
-### Configure `.env` for offline mode
+### Resetting
 
-```env
-LLM_DEFAULT_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
+`make reset` runs `docker compose down -v` and starts again. That deletes **every** volume:
+PostgreSQL (firms, cases, proceedings), MongoDB (turns, evidence text, usage), Qdrant, Redis,
+Keycloak (registered users) and uploaded evidence files. Use it when you want a clean slate.
 
-EMBEDDER_BACKEND=sentence-transformers
-EMBEDDING_DIMENSION=384
-
-DB_BACKEND=sqlite
-VECTOR_DB_BACKEND=chroma
-STORAGE_BACKEND=local
-```
-
-### Start Ollama + app
+### Rebuilding one service
 
 ```bash
-# Terminal 1, Ollama server
-ollama serve
-
-# Terminals 2-4, same as Option C (backend, worker, frontend)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend
 ```
-
-Everything now runs locally. No API keys, no external services, no network calls during simulation.
-
----
-
-## First run walkthrough
-
-Once the app is running:
-
-### 1. Create a case
-
-Open http://localhost:3000, click **New Case**, fill in:
-- Title and description of the legal matter
-- Country (e.g. `India`, `United States`, `United Kingdom`)
-- Jurisdiction (e.g. `Maharashtra`, `California`, `England and Wales`)
-- Legal system (`common_law`, `civil_law`, `sharia`, `hybrid`)
-
-### 2. Upload evidence
-
-Go to the case → Evidence tab. Drag and drop any supported file:
-- PDF (court documents, contracts, reports)
-- DOCX (written statements, affidavits)
-- MP3/WAV/M4A (audio recordings)
-- MP4/MOV (video footage)
-- JPG/PNG (photographs, exhibits)
-- TXT (plain text statements)
-
-The file is sent to Celery for ingestion. Status updates from `pending` → `processing` → `indexed` in real time. Once indexed, chunks are searchable by agents.
-
-### 3. Create a simulation
-
-Click **New Simulation** on the case page:
-- Choose a mode: **Courtroom**, **Deposition**, or **Strategy**
-- Set max turns (10-50 recommended for local testing)
-- Add predefined agents: pick roles, names, personas, and optionally override the LLM provider/model per agent
-
-### 4. Start the simulation
-
-Click **Start**. A WebSocket connection opens and the TurnFeed begins streaming:
-- Each agent's turn appears as a role-colored bubble
-- Tokens stream in real time as the agent "speaks"
-- Evidence citations appear as hoverable chips
-- The AgentGraph on the right updates when agents spawn sub-agents
-
-### 5. Intervene (optional)
-
-- Click any turn bubble → **Edit** to override an agent's statement (sets `is_human_override=true`)
-- Click **Pause** to pause after the current turn completes
-- Click **Resume** to continue
-
----
-
-## Database migrations
-
-```bash
-# Apply all pending migrations
-make migrate
-
-# Create a new migration after model changes
-make migrate-create
-# > Migration name: add_case_verdict_field
-
-# Roll back one migration
-make migrate-down
-```
-
-Migrations only apply to SQL backends (PostgreSQL and SQLite). MongoDB is schema-less, collections are created automatically on first write.
-
----
 
 ## Running tests
 
+The backend suite needs no Docker services and no network:
+
 ```bash
-# Full test suite with coverage
-make test
+cd backend
+uv run pytest -v            # unit + API + a full simulation with a scripted LLM
+uv run pytest --cov=app     # with coverage
+```
 
-# Backend tests only
-cd backend && uv run pytest -v
+It uses a throwaway SQLite database per test (standing in for PostgreSQL), an in-memory
+MongoDB double, a locally generated RSA key in place of Keycloak, mocked Celery tasks and
+scripted LLMs. Frontend checks:
 
-# One area at a time
-cd backend && uv run pytest tests/unit -v          # auth, citations, procedure, audit, ingestion
-cd backend && uv run pytest tests/api -v           # every route, ownership, WebSocket, full simulation
-
-# Frontend linting + type check
+```bash
 cd frontend && bun run lint && bun run tsc --noEmit
+cd admin    && bun run lint && bun run tsc --noEmit
 ```
-
-Tests use a throwaway SQLite database per test, a locally generated RSA key standing in for Keycloak, and scripted LLMs and stubbed vector stores. They need no Docker services and make no network calls.
-
----
-
-## Environment variables cheat sheet
-
-```bash
-# Switch to SQLite instantly
-DB_BACKEND=sqlite
-SQLITE_PATH=./nyayrithm.db
-
-# Switch to Chroma for vector DB
-VECTOR_DB_BACKEND=chroma
-
-# Use Gemini for free
-LLM_DEFAULT_PROVIDER=gemini
-GEMINI_API_KEY=AIza...
-
-# Use local sentence-transformers for embeddings
-EMBEDDER_BACKEND=sentence-transformers
-EMBEDDING_DIMENSION=384
-
-# Use Ollama for fully offline LLM
-LLM_DEFAULT_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-```
-
----
 
 ## Troubleshooting
 
-### Backend fails to start: `connection refused` to Postgres
+**The first build is very slow.** The backend image installs ffmpeg and its libraries. Later
+builds reuse the cache.
 
-You're using `DB_BACKEND=postgres` but PostgreSQL isn't running. Either:
-- Run `make dev` to start the Docker stack, or
-- Switch to `DB_BACKEND=sqlite` in `.env` for local dev
+**A page loads but data is missing, or the dashboard shows "We could not reach the server".**
+The backend isn't up yet. Check `docker compose ps` and the backend logs; wait for Keycloak's
+first import to finish.
 
-### Celery worker not processing evidence
+**"You are not part of a firm yet".** In credentials mode, you signed in with an account that
+isn't in **Dev Firm**. Use one of the listed development accounts, or accept an invitation.
 
-Check that the broker is reachable:
-```bash
-cd backend && uv run celery -A app.tasks.celery_app inspect active
-```
+**Login fails in credentials mode.** Keycloak imports the realm only on first start with an
+empty volume. If you changed `keycloak/realm-dev.json`, run `make reset`.
 
-If Redis is down: `redis-cli ping` should return `PONG`. Start Redis or use `CELERY_BROKER_URL=memory://`.
+**Invitation emails don't arrive.** In development they go to Mailpit, not to a real inbox:
+<http://localhost:8025>.
 
-### Evidence stuck at `processing`
+**A simulation stops with "Turn failed" or pauses by itself.** Usually a provider rate limit
+or a missing key; the message says which. Resume it. If it says the token allowance is used up,
+raise the plan in the admin portal.
 
-The Celery worker handles ingestion. Make sure the worker is running (Terminal 2 in the walkthrough above). Check worker logs for errors:
-```bash
-make logs    # if using Docker
-# or check Terminal 2 output
-```
+**Port already in use.** Something else is on 3000, 3001, 8000, 8080, 5432, 6379, 6333 or
+27017. Stop it, or change the published port in `docker-compose.dev.yml`.
 
-### Gemini API rate limit errors (`429`)
-
-You've hit the free tier RPM (15 requests/min). Solutions:
-- Reduce simulation speed (add `TURN_DELAY_SECONDS=5` to `.env`)
-- Use `gemini-flash-lite-latest` for simple roles (higher daily request quota)
-- Spread agents across multiple providers
-
-### Qdrant collection already exists error
-
-This can happen when restarting after a schema change. Drop and recreate:
-```bash
-# If using Docker
-docker compose exec qdrant ash -c "rm -rf /qdrant/storage/collections/case_*"
-docker compose restart qdrant
-```
-
-Or switch to `VECTOR_DB_BACKEND=chroma` for local dev.
-
-### `sentence-transformers` slow first run
-
-The model is downloaded on first use (~90 MB). Subsequent runs use the cached model. If you're behind a proxy, set `HF_HUB_OFFLINE=1` after the initial download.
-
-### Frontend can't connect to backend
-
-Ensure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `.env`. The Next.js dev server reads this at build time, restart `bun dev` after changing it.
-
-### Login/register returns "Could not reach authentication server" (503)
-
-This usually means Next.js API routes can't reach Keycloak. Check:
-
-1. **Docker setup:** `KEYCLOAK_URL` must be `http://keycloak:8080` (the Docker service name), not `localhost:8080`. This is set automatically in `docker-compose.yml`.
-2. **Native dev:** Ensure `frontend/.env.local` exists with `KEYCLOAK_URL=http://localhost:8080`. Run `make env` to create it.
-3. **Keycloak not started:** Wait ~30 seconds after `make dev` for Keycloak to finish realm import. Check with `docker compose logs keycloak`.
+**Docker can't pull images (TLS timeout).** A network hiccup reaching Docker Hub; retry.

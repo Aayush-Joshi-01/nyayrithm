@@ -1,4 +1,4 @@
-# GitHub Pages (Jekyll) config for the Nyayrithm developer docs.
+# GitHub Pages (Jekyll) config for the Nyayrithm project documentation.
 # Served at https://aayush-joshi-01.github.io/nyayrithm/
 #
 # No external theme. The look is hand-built to match "The Night Court"
@@ -8,10 +8,11 @@
 # To move to a custom subdomain later: set `baseurl: ""`, `url: "https://<domain>"`,
 # and add a `docs/CNAME` file with that domain.
 
-title: Nyayrithm docs
+title: Nyayrithm
 description: >-
-  Run, understand, and extend Nyayrithm, a multi-agent, evidence-grounded
-  courtroom simulation platform. Self-hostable and provider-agnostic.
+  Nyayrithm is a multi-agent courtroom simulation platform for law firms: AI counsel
+  argue a case from the evidence, every claim traced to its source, every citation
+  checked, every proceeding on a tamper-evident record.
 url: "https://aayush-joshi-01.github.io"
 baseurl: "/nyayrithm"
 lang: en

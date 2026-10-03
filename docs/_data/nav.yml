@@ -1,25 +1,45 @@
 # Sidebar navigation for the docs site. Order here is the order shown.
-- section: Start
+- section: Overview
   items:
     - title: Home
       url: /
-- section: Setup
+    - title: Vision and aims
+      url: /vision/
+    - title: Product tour
+      url: /product-tour/
+    - title: How it works
+      url: /how-it-works/
+- section: Platform
   items:
-    - title: Windows
-      url: /setup/windows/
-    - title: macOS
-      url: /setup/macos/
-    - title: Linux
-      url: /setup/linux/
+    - title: Core concepts
+      url: /concepts/
+    - title: Firms and access
+      url: /firms-and-access/
+    - title: Admin portal and LLMOps
+      url: /admin-and-llmops/
+    - title: Legal accuracy
+      url: /legal-accuracy/
+    - title: Architecture
+      url: /architecture/
+    - title: Trust and security
+      url: /trust-and-security/
+- section: Project
+  items:
+    - title: Roadmap
+      url: /roadmap/
+    - title: FAQ and glossary
+      url: /faq/
 - section: Guides
   items:
     - title: Running locally
       url: /running-locally/
+    - title: Windows setup
+      url: /setup/windows/
+    - title: macOS setup
+      url: /setup/macos/
+    - title: Linux setup
+      url: /setup/linux/
     - title: LLM providers
       url: /llm-providers/
-    - title: Architecture
-      url: /architecture/
-    - title: Legal accuracy
-      url: /legal-accuracy/
     - title: Deployment
       url: /deployment/

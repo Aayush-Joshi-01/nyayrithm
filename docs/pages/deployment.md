@@ -6,101 +6,151 @@ permalink: /deployment/
 
 # Deployment
 
-Nyayrithm runs on **two domains** in production:
+Nyayrithm deploys with **Docker Compose**, and only Docker Compose. One host, one
+`docker-compose.yml`, one `.env`.
 
-| Domain | Serves | Indexed? |
+For a laptop, use [Running locally]({{ '/running-locally/' | relative_url }}); the development overlay
+adds hot reload, Mailpit and static accounts. This page is about a real deployment.
+
+## What you are deploying
+
+| Service | Port | Public? |
 |---|---|---|
-| `nyayrithm.aayushjoshi.dev` | the landing page (`/`) and documentation (`/docs`) | yes |
-| `nyayrithm.ai.aayushjoshi.dev` | the app: sign-in, dashboard, evidence, proceedings | no (auth pages carry `noindex`) |
+| `frontend` (firm portal) | 3000 | yes, behind TLS |
+| `admin` (operations console) | 3001 | yes, behind TLS, ideally restricted by IP or VPN |
+| `backend` (API and WebSocket) | 8000 | yes, behind TLS |
+| `keycloak` | 8080 | yes, behind TLS |
+| `db`, `mongo`, `redis`, `qdrant` | internal | **no** |
+| `celery_worker`, `migrate` | none | no |
 
-Search engines and answer engines see one clean marketing surface; people who click "Convene a proceeding" cross over to the app. The two can be the **same deployment** with two domains pointed at it, or **two deployments**.
+The production compose file publishes only the four web-facing ports. It uses built images, no
+bind mounts, no auto-reload, no dev auth and no seeding. Put a TLS-terminating reverse proxy
+(Caddy, nginx, Traefik, a cloud load balancer) in front of the four public services.
 
----
+## Hostnames
 
-## How the split is wired
+Five public hostnames are typical:
 
-Two build-time environment variables drive it (both `NEXT_PUBLIC_*`, so they are inlined at build time):
+| Hostname (example) | Serves | Variable |
+|---|---|---|
+| `nyayrithm.example.com` | landing page and docs (indexed by search engines) | `NEXT_PUBLIC_MARKETING_URL` |
+| `app.example.com` | the firm portal | `APP_URL` |
+| `admin.example.com` | the operations console | `ADMIN_URL` |
+| `api.example.com` | the API and WebSocket | `API_URL`, `WS_URL` |
+| `auth.example.com` | Keycloak | `KEYCLOAK_PUBLIC_URL` |
 
-```bash
-NEXT_PUBLIC_MARKETING_URL=https://nyayrithm.aayushjoshi.dev
-NEXT_PUBLIC_APP_URL=https://nyayrithm.ai.aayushjoshi.dev
-```
+The landing page and the app can be one deployment with two hostnames (the default) or two
+deployments; `NEXT_PUBLIC_APP_URL` decides whether marketing links cross over to the app host.
+Leave it unset for a single-host setup.
 
-- `src/lib/site.ts` exposes `MARKETING_URL` and `appHref("/path")`.
-- `metadataBase`, canonicals, `sitemap.ts`, `robots.ts`, `opengraph-image`, and the `Organization` JSON-LD use **`MARKETING_URL`**.
-- Every link into the product: "Convene a proceeding", "Sign in" on the landing and docs, uses **`appHref()`**, which returns an absolute `APP_URL` link when the var is set and a same-origin relative link when it is not.
-- Leave both **unset locally**; links stay relative and everything runs on `localhost:3000`.
+## Steps
 
-If `NEXT_PUBLIC_APP_URL` is unset, the split collapses to a single-domain app with no code changes.
-
----
-
-## Option A: one deployment, two domains (recommended)
-
-Deploy the Next.js app once. Point both hostnames at it.
-
-1. Build with both URLs set (Docker example):
-
-   ```bash
-   docker build ./frontend \
-     --build-arg NEXT_PUBLIC_MARKETING_URL=https://nyayrithm.aayushjoshi.dev \
-     --build-arg NEXT_PUBLIC_APP_URL=https://nyayrithm.ai.aayushjoshi.dev \
-     --build-arg NEXT_PUBLIC_API_URL=https://api.nyayrithm.aayushjoshi.dev \
-     --build-arg NEXT_PUBLIC_WS_URL=wss://api.nyayrithm.aayushjoshi.dev \
-     --build-arg NEXT_PUBLIC_KEYCLOAK_URL=https://auth.nyayrithm.aayushjoshi.dev \
-     --build-arg NEXT_PUBLIC_KEYCLOAK_REALM=nyayrithm \
-     --build-arg NEXT_PUBLIC_KEYCLOAK_CLIENT_ID=nyayrithm-app \
-     -t nyayrithm-frontend:prod
-   ```
-
-   (On a platform like Vercel or Netlify, set these as environment variables in the project settings instead of build args.)
-
-2. Run it. The Dockerfile uses `output: "standalone"`, so `node server.js` on port 3000.
-
-3. DNS: an `A` / `AAAA` (or `CNAME` on a PaaS) record for **each** hostname pointing at the same target.
-
-4. Reverse proxy / edge: route both hostnames to the container. No host-based rules are needed, the app serves every route on both.
-
-**Downside:** `nyayrithm.aayushjoshi.dev/dashboard` also resolves (to the login wall). If you want the marketing domain to be strictly marketing, add a redirect at the edge: on `nyayrithm.aayushjoshi.dev`, 308-redirect anything that is not `/`, `/docs`, `/sitemap.xml`, `/robots.txt`, `/llms*.txt`, `/opengraph-image`, or `/_next/*` to the same path on `nyayrithm.ai.aayushjoshi.dev`.
-
-## Option B: two deployments
-
-- **Marketing** (`nyayrithm.aayushjoshi.dev`): deploy the same repo, but only `/` and `/docs` matter. Set `NEXT_PUBLIC_APP_URL` to the app domain so the CTAs cross over. You can leave the backend vars pointing anywhere valid: the marketing routes never call the API.
-- **App** (`nyayrithm.ai.aayushjoshi.dev`): full deployment with real API / WS / Keycloak URLs. Set `NEXT_PUBLIC_APP_URL` to its own domain (so absolute links resolve to itself).
-
-This keeps the marketing surface small and independently cacheable at the cost of building twice.
-
----
-
-## Backend
-
-The API is a separate service (`api.nyayrithm.aayushjoshi.dev` in the examples above). It ships via the manual **Deploy Backend** GitHub Action (`.github/workflows/deploy-backend.yml`) to AWS ECR + ECS, or by any means that runs the `backend/` Docker image. The `infra/terraform/` modules provision VPC, RDS, ElastiCache, ECS, S3, and Qdrant when enabled per environment.
-
-**CORS:** the backend must allow both frontend origins.
+**1. Get the code and configure.**
 
 ```bash
-CORS_ORIGINS=https://nyayrithm.aayushjoshi.dev,https://nyayrithm.ai.aayushjoshi.dev
+git clone https://github.com/Aayush-Joshi-01/nyayrithm.git && cd nyayrithm
+cp .env.example .env
 ```
+
+Fill in `.env`. Every value in the template is required unless marked optional. In
+particular:
+
+- `SECRET_KEY`, `POSTGRES_PASSWORD`, `MONGO_PASSWORD`, `KEYCLOAK_ADMIN_PASS`: long, random,
+  and unique.
+- The five public URLs above.
+- At least one LLM key (`GEMINI_API_KEY`, `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`), or point
+  at Ollama.
+- `SMTP_*`: **required**, so that invitations are delivered.
+
+The backend refuses to start in production if `SECRET_KEY` is the default or any development
+switch is on.
+
+**2. Start.**
+
+```bash
+docker compose up -d --build
+```
+
+This builds the images, starts the data services, runs the database migration, then starts the
+backend, the worker and both portals. The first Keycloak start imports the realm from
+`keycloak/realm-prod.json`, substituting your `APP_URL` and `ADMIN_URL` into the clients'
+redirect URIs.
+
+**3. Create the first platform administrator.** Register an account through the firm portal's
+sign-up page (or the Keycloak console), then grant it the operator role:
+
+```bash
+make admin-user EMAIL=you@example.com
+```
+
+Sign out and in again, then open the admin portal.
+
+**4. Create the first firm.** In the admin portal go to **Firms → New firm**: choose a plan,
+the seats, the paid-until date and an invoice reference, and enter the owner's email. They
+receive an invitation; when they accept, the firm is live. The default plans (Trial,
+Professional, Enterprise) exist from the first start and are edited under **Plans**.
+
+**5. Check health.** The admin portal's **System** page shows each service. Everything should
+be green; the Celery row confirms a worker answered.
+
+## Reverse proxy notes
+
+- **WebSocket:** proxy `/ws/` on the API host with upgrade headers. Without it, live
+  streaming silently falls back to polling.
+- **Uploads:** raise the proxy's body-size limit to at least `MAX_UPLOAD_MB`.
+- **Keycloak:** it sits behind a proxy, so it runs with `KC_PROXY_HEADERS=xforwarded`; have the
+  proxy send `X-Forwarded-For`, `-Proto` and `-Host`.
+- **CORS:** the backend allows the portal origins derived from `APP_URL` and `ADMIN_URL`.
 
 ## Keycloak
 
-The realm's `nyayrithm-app` client must trust both domains. In the realm export (`infra/keycloak/realm-export.json`) or the admin console, set on that client:
+The realm has two public clients, `nyayrithm-app` and `nyayrithm-admin`, each trusting only its
+own portal's URL. Registration is open on the firm portal (people who register but belong to no
+firm see a page explaining they need an invitation). Turn registration off in the realm if
+you would rather every account be created by invitation only.
 
-- **Valid redirect URIs**
-  - `https://nyayrithm.ai.aayushjoshi.dev/*`
-  - `https://nyayrithm.aayushjoshi.dev/*` (only if Option A without the redirect)
-- **Web origins**
-  - `https://nyayrithm.ai.aayushjoshi.dev`
-  - `+` (to mirror the redirect URIs) or the explicit list
+## Data and backups
 
-The frontend's `/api/auth/*` route handlers call Keycloak server-side, so they need `KEYCLOAK_URL` (the server-reachable URL) in addition to the browser-facing `NEXT_PUBLIC_KEYCLOAK_URL`.
+| What | Where | Back up |
+|---|---|---|
+| Firms, cases, proceedings, audit chain | `pgdata` volume | `pg_dump` of the `nyayrithm` database |
+| Keycloak users | the `keycloak` database on the same server | `pg_dump` of the `keycloak` database |
+| Turns, extracted text, usage events | `mongodata` volume | `mongodump` |
+| Vectors | `qdrantdata` volume | Qdrant snapshots (they can also be rebuilt by re-indexing evidence) |
+| Original evidence files | `evidence_storage` volume, or your S3 bucket | volume snapshot or bucket versioning |
+
+Back up Postgres and Mongo together, or at least close in time: turns refer to simulations.
+Export the head hash that **verify record** returns and keep it outside these systems if you
+want to be able to prove the audit chain was not truncated.
+
+## Updating
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+The `migrate` service runs `alembic upgrade head` on every start. Take a backup first when a
+release adds a migration.
+
+## Optional: S3-compatible evidence storage
+
+Set `STORAGE_BACKEND=s3` (or `minio`) with the `AWS_*`/`S3_*` variables. To run MinIO from the
+same compose file: `docker compose --profile s3 up -d`.
+
+## Publishing images (optional)
+
+The manual **Publish Images** workflow builds the backend, frontend and admin images and pushes
+them to GitHub Container Registry, so a host can pull instead of build. Deployment itself is
+still `docker compose`.
 
 ## Checklist
 
-- [ ] Change every default password (`SECURITY.md`)
-- [ ] `NEXT_PUBLIC_DEV_MODE` unset or `false` in every non-local environment
-- [ ] `NEXT_PUBLIC_MARKETING_URL` and `NEXT_PUBLIC_APP_URL` set at build time
-- [ ] Backend `CORS_ORIGINS` lists both frontend domains
-- [ ] Keycloak client redirect URIs and web origins cover the app domain
-- [ ] `https://nyayrithm.aayushjoshi.dev/sitemap.xml` and `/robots.txt` resolve after deploy
-- [ ] Submit the sitemap in Google Search Console for `nyayrithm.aayushjoshi.dev`
+- [ ] Every secret in `.env` is changed and unique ([SECURITY.md](https://github.com/Aayush-Joshi-01/nyayrithm/blob/main/SECURITY.md))
+- [ ] `APP_ENV=production`, and none of `DEV_AUTH_MODE`, `AUTH_DEV_BYPASS`, `SEED_DEV_DATA` set
+- [ ] TLS in front of the four public services; databases not exposed
+- [ ] Admin portal restricted by IP or VPN where possible
+- [ ] `SMTP_*` configured and a test invitation delivered
+- [ ] The first platform admin created, and the default Keycloak admin password changed
+- [ ] Backups of Postgres, Mongo and the evidence volume scheduled and tested
+- [ ] `https://nyayrithm.example.com/sitemap.xml` and `/robots.txt` resolve

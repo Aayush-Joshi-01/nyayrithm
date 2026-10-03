@@ -6,7 +6,9 @@ permalink: /architecture/
 
 # Architecture
 
-This document covers system design decisions, data flow, and the reasoning behind key abstractions in Nyayrithm.
+How Nyayrithm is built: the services, where data lives, how a request and a proceeding flow
+through them, and how the pieces are kept swappable. For *what the system does*, start with
+[How it works]({{ '/how-it-works/' | relative_url }}).
 
 ---
 
@@ -14,48 +16,72 @@ This document covers system design decisions, data flow, and the reasoning behin
 
 - [System overview](#system-overview)
 - [Authentication](#authentication)
-- [Data models](#data-models)
-- [Repository pattern](#repository-pattern)
+- [Data stores](#data-stores)
 - [Agent system](#agent-system)
 - [RAG pipeline](#rag-pipeline)
 - [Simulation engine](#simulation-engine)
-- [Legal accuracy](/legal-accuracy/)
+- [Legal accuracy]({{ '/legal-accuracy/' | relative_url }})
 - [WebSocket streaming](#websocket-streaming)
 - [Infrastructure flexibility](#infrastructure-flexibility)
 - [Frontend & production topology](#frontend--production-topology)
+- [Firms, tenancy and metering](#firms-tenancy-and-metering)
 
 ---
 
 ## System overview
 
+Everything runs as containers under Docker Compose. There is no other deployment mechanism.
+
 ```
-Browser
-  │
-  │  HTTP (REST)           WebSocket (streaming)
-  ▼                        ▼
-FastAPI ──────────────── /ws/simulations/{id}
-  │                        │
-  │ async                  │ broadcast_fn
-  ▼                        ▼
-Services             AgentOrchestrator
-  │                    │         │
-  │             AgentGraph   turn_processor
-  │                    │
-  │            BaseAgent.run_turn()
-  │               ├── perceive()
-  │               ├── retrieve()  ──► VectorStore
-  │               ├── respond()   ──► LLMProvider (streaming)
-  │               └── maybe_spawn()
-  │
-  ▼
-Repository[T]  ──►  Postgres / MongoDB / SQLite
-  │
-  ▼
-Celery workers (evidence queue + simulation queue)
-  │
-  ├── EvidenceIngester → Chunker → Embedder → VectorStore.upsert()
-  └── SimulationEngine.run_next_turn()
+ Firm portal (Next.js)        Admin portal (Next.js)
+  :3000                         :3001
+     |  REST + WebSocket          |  REST (platform_admin only)
+     v                            v
+ +-------------------- FastAPI backend :8000 -----------------------+
+ |  routes -> services -> AccessService (firm boundary)             |
+ |              |                                                   |
+ |              +- cases, evidence, simulations, agents             |
+ |              +- orgs, invites, entitlements                      |
+ |              +- admin, llmops, system health                     |
+ |              +- legal: packs, citation checker, procedure, audit |
+ +------+-----------------+------------------+--------------+-------+
+        |                 |                  |              |
+        v                 v                  v              v
+   PostgreSQL          MongoDB            Qdrant        Redis <-> Celery workers
+   relational,         documents &        vectors       broker,    evidence ingestion,
+   transactional,      events                           event bus  simulation runs
+   audit chain
+        |
+   Keycloak (identity; its own database on the same server)
 ```
+
+A browser talks only to the two portals and the API. Long-running work (evidence ingestion
+and simulation runs) happens in Celery workers; they publish events to Redis, which the API
+relays to the browser over a WebSocket.
+
+### Services
+
+| Service | Role |
+|---|---|
+| `frontend` | Firm portal. Server-side routes sign users in against Keycloak and hand the browser a bearer token. |
+| `admin` | Operations console. Own Keycloak client and cookies; only `platform_admin`. |
+| `backend` | The API, the live WebSocket, and on startup: Mongo indexes, default plans, optional dev seeding. |
+| `celery_worker` | Runs evidence ingestion and whole simulations. |
+| `db` | PostgreSQL. Also hosts Keycloak's database. |
+| `mongo` | MongoDB. |
+| `redis` | Celery broker and the simulation event bus. |
+| `qdrant` | Vector store, one collection per case. |
+| `keycloak` | Identity provider. |
+| `migrate` | One-shot `alembic upgrade head` before the backend starts. |
+| `mailpit` (dev) | Catches invitation emails. |
+| `minio` (optional, `--profile s3`) | S3-compatible evidence storage. |
+
+### Request path
+
+A request carries a bearer token. `get_current_user` verifies it; `get_org_user` resolves the
+user's firm and firm role (from the `X-Org-Id` header, or their only firm); the route calls a
+service, and every resource lookup goes through `AccessService`. Services take a `Stores`
+object holding both databases and never name a driver.
 
 ---
 
@@ -126,7 +152,7 @@ The login/register API routes run **server-side inside the Docker network**. Ins
 | `frontend/src/app/api/auth/token/route.ts` | `GET /api/auth/token`, returns/refreshes the bearer token for the API client |
 | `frontend/src/middleware.ts` | Protects `/dashboard/*` via cookie check |
 | `backend/app/core/auth.py` | Keycloak JWKS verification (`KeycloakVerifier`) |
-| `backend/app/services/access.py` | Ownership checks shared by every route |
+| `backend/app/services/access.py` | The firm boundary: who may see which case |
 | `infra/keycloak/realm-export.json` | Realm config auto-imported on first Keycloak start |
 | `frontend/.env.local` | Local dev env vars (created by `make env`, git-ignored) |
 
@@ -136,94 +162,83 @@ The FastAPI backend does not trust the frontend. Every `/api/v1` route, and the 
 
 - The token must be **RS256**-signed by a key published in the realm's JWKS (`/realms/nyayrithm/protocol/openid-connect/certs`). Keys are cached and refetched once when an unknown `kid` appears, so key rotation needs no restart. `HS256` and `alg: none` tokens are rejected outright.
 - The `iss` claim must be one of the realm URLs derived from `KEYCLOAK_URL` and `NEXT_PUBLIC_KEYCLOAK_URL` (tokens minted from inside Docker carry the internal host, browser-minted ones the public host). Add others with `KEYCLOAK_EXTRA_ISSUERS`.
-- Expired tokens are rejected (10 s clock leeway). The `sub` claim becomes the owner id; the `admin` realm role may read any case.
+- Expired tokens are rejected (10 s clock leeway). The `sub` claim identifies the user. The `platform_admin` realm role unlocks the admin API and nothing else: it grants no access to any firm's data.
 
 The browser cannot read the httpOnly cookies, so `GET /api/auth/token` (a Next.js route) returns the access token, refreshing it from the refresh-token cookie when it has expired. `frontend/src/lib/api.ts` attaches it as `Authorization: Bearer …`; the WebSocket sends it as `?token=` because browsers cannot set headers on a socket. A rejected socket is closed with code `4401` (bad token) or `4403` (not your simulation).
 
-**Ownership.** A case belongs to the user who created it; simulations, evidence, agents and turns inherit access from their case (`backend/app/services/access.py`). Anything you do not own answers `404`, exactly like something that does not exist, so ids cannot be probed.
+**Access.** Cases belong to a firm; simulations, evidence, agents and turns inherit access from their case (`backend/app/services/access.py`). Anything the caller may not see answers `404`, exactly like something that does not exist, so ids cannot be probed. See [Firms and access]({{ '/firms-and-access/' | relative_url }}).
 
-### Dev mode bypass
+### Dev modes
 
-For local work without Keycloak, set both:
+A development stack has two ways to run, chosen with one variable (`DEV_AUTH_MODE`, set by
+`make dev` or `make dev-creds`):
 
-```
-NEXT_PUBLIC_DEV_MODE=true   # frontend: skip the login wall
-AUTH_DEV_BYPASS=true        # backend: token-less requests act as DEV_USER_ID (default user-001)
-```
+| Mode | Behaviour |
+|---|---|
+| `open` | No login in either portal. Token-less requests to the API act as the seeded dev owner. |
+| `credentials` | Real Keycloak sign-in with the static accounts in `keycloak/realm-dev.json`, listed on the dev login screens. |
 
-The bypass only applies to requests that carry **no** token; a presented but invalid token is still a 401. The backend refuses to start with `AUTH_DEV_BYPASS=true` when `APP_ENV=production`.
-
-Data created before auth existed is owned by `user-001`. To hand it to a real user, run `UPDATE cases SET created_by = '<keycloak sub>' WHERE created_by = 'user-001';` (and the same for `simulations`).
-
----
-
-## Data models
-
-All models are **plain Python `@dataclass` objects**: no SQLAlchemy ORM, no Beanie, no ODM. This is intentional:
-
-- The application layer is completely decoupled from the storage layer
-- The same dataclass can be persisted to PostgreSQL (as rows), MongoDB (as documents), or SQLite (as rows with JSON blobs)
-- Serialisation/deserialisation is handled entirely inside each `Repository` adapter
-
-### JSON/dict fields
-
-Fields typed as `dict` or `list` are stored differently per backend:
-
-| Backend | Storage |
-|---------|---------|
-| PostgreSQL | `JSONB` column |
-| MongoDB | Native embedded document |
-| SQLite | JSON-serialised `TEXT` column |
-
-The adapter translates transparently, the application always sees a Python `dict` or `list`.
-
-### UUIDs
-
-IDs are generated at the **application layer** (not the database), using `uuid.uuid4()`. This makes IDs portable across all backends and allows objects to be constructed with a stable ID before they are persisted.
+The bypass only applies to requests that carry **no** token; a presented but invalid token is
+still a 401. With `SEED_DEV_DATA=true` the backend creates "Dev Firm", the default plans, an
+active subscription, memberships matching the dev accounts and a sample case, idempotently.
+The backend refuses to start with any of these on when `APP_ENV=production`.
 
 ---
 
-## Repository pattern
+## Data stores
+
+Data is split by shape across two databases. Both are always on.
+
+| PostgreSQL: relational, transactional | MongoDB: documents, high volume |
+|---|---|
+| organizations, memberships, invites, plans, subscriptions | `turns`: the full text of each turn, its legal review, procedure review and provenance |
+| cases, case sharing, simulations, agent definitions | `evidence_content`: extracted text, transcripts, OCR output, segments |
+| evidence rows (file, status, counts) | `llm_usage`: one document per model call |
+| usage counters (per firm, per month) | `llm_prices`: operator price overrides |
+| the audit hash chain, admin events | |
+
+The reasoning: firms, plans and cases are relational and need constraints and transactions
+(a seat count must not race); an audit chain needs an append-only guarantee a trigger can give;
+turns, extracted text and usage events are large, schemaless and append-heavy, and are queried by
+simulation or by time window. Per-firm monthly counters are kept in Postgres even though raw
+usage events are in Mongo, so that quota checks are one indexed row.
+
+Vectors live in Qdrant. Original files live on disk or S3-compatible storage.
+
+### Models are plain dataclasses
+
+All models are **plain Python `@dataclass` objects**: no ORM, no ODM. The application layer is
+decoupled from storage, and serialisation is handled inside each repository adapter. IDs are
+generated by the application (`uuid4`), so objects can be built before they are saved.
+
+### Repositories and `Stores`
 
 ```
-app/db/repository_base.py
-    Repository(Protocol[T])       ← structural protocol (type-checking only)
-    BaseRepository(Generic[T])    ← concrete base with shared helpers
-
-app/db/adapters/
-    postgres.py   PostgresRepository   (SQLAlchemy Core, raw SQL, NOT ORM)
-    mongodb.py    MongoRepository      (Motor async pymongo)
-    sqlite.py     SQLiteRepository     (aiosqlite)
-
-app/db/factory.py
-    get_repository(model, session) → correct adapter based on DB_BACKEND env var
+app/db/stores.py          Stores(pg: AsyncSession, mongo: Database); get_stores(), open_stores()
+app/db/repositories/      one repository per model, split into PG_REPOSITORIES / MONGO_REPOSITORIES
+app/db/adapters/          PostgresRepository (SQLAlchemy Core, raw SQL)  |  MongoRepository (Motor)
+app/db/factory.py         get_repository(model, stores)  ->  the right adapter for that model
 ```
 
-### Why SQLAlchemy Core instead of ORM?
+`get_repository("turn", stores)` returns a Mongo repository; `get_repository("case", stores)`
+returns a Postgres one. Both implement the same protocol (`get`, `list`, `create`, `update`,
+`delete`, `delete_where`, `count`), so a service does not know or care which it has. Ordering
+follows one convention across both: `"field"` ascends, `"field DESC"` descends, and no
+ordering means newest first.
 
-The ORM requires models to inherit from `DeclarativeBase`, which couples model definitions to the storage layer. Using SQLAlchemy Core with raw SQL strings:
-- Keeps models as pure dataclasses
-- Makes the SQL explicit and auditable
-- Is straightforward to port to other SQL dialects
+SQLAlchemy *Core* is used rather than the ORM, so models stay pure dataclasses and the SQL is
+explicit and auditable.
 
-### Adding a new backend
+### Migrations
 
-Create `app/db/adapters/mybackend.py`:
+PostgreSQL schema is managed by Alembic (`backend/alembic/versions`). MongoDB is schemaless;
+the backend ensures its indexes at startup. Compose runs the `migrate` service before the
+backend.
 
-```python
-from app.db.repository_base import BaseRepository
-from app.models.case import Case   # any model
+### Adding a model
 
-class MyBackendRepository(BaseRepository[Case]):
-    async def get(self, id: str) -> Case | None: ...
-    async def list(self, filters, page, size, order_by) -> tuple[list[Case], int]: ...
-    async def create(self, entity: Case) -> Case: ...
-    async def update(self, id: str, data: dict) -> Case: ...
-    async def delete(self, id: str) -> bool: ...
-    async def query(self, raw_query, **kwargs) -> list[Case]: ...
-```
-
-Register in `app/db/factory.py` and set `DB_BACKEND=mybackend` in `.env`.
+Add the dataclass in `app/models/`, register its repository in `app/db/repositories/__init__.py`
+under the store that suits it, and (for Postgres) add a migration.
 
 ---
 
@@ -478,17 +493,20 @@ The frontend `SimulationWebSocket` class (`frontend/src/lib/ws.ts`) implements e
 
 ## Infrastructure flexibility
 
-All service choices are driven by environment variables. The abstraction layers ensure application code never imports a specific driver directly, only the factory functions do.
+Service choices are driven by environment variables. Application code never imports a
+specific driver; only the factory functions do.
 
 ```
-app/db/factory.py          get_repository()     → selected by DB_BACKEND
-app/vector_db/factory.py   get_vector_store()   → selected by VECTOR_DB_BACKEND
-app/storage/factory.py     get_file_storage()   → selected by STORAGE_BACKEND
-app/rag/embedder_factory.py get_embedder()      → selected by EMBEDDER_BACKEND
-app/llm/factory.py         build_llm_provider() → selected by LLM_DEFAULT_PROVIDER
+app/db/factory.py              get_repository()      by model: PostgreSQL or MongoDB
+app/vector_db/factory.py       get_vector_store()    VECTOR_DB_BACKEND (qdrant)
+app/storage/factory.py         get_file_storage()    STORAGE_BACKEND (local | s3 | minio)
+app/rag/embedder_factory.py    get_embedder()        EMBEDDER_BACKEND (openai | gemini | sentence-transformers | local)
+app/llm/factory.py             build_llm_provider()  per agent: openai | anthropic | gemini | ollama
 ```
 
-Adding a new option to any category is a three-step process: implement the protocol, register in the factory, add env var support in `config.py`.
+Only backends that are actually implemented are accepted: a typo or an unbuilt option fails
+at startup, not on the first request. Adding an option is three steps: implement the
+protocol, register it in the factory, add its setting to `config.py`.
 
 ---
 
@@ -504,3 +522,32 @@ In production the two surfaces are split across domains, resolved by `frontend/s
 | `NEXT_PUBLIC_APP_URL` | The app (`/login`, `/signup`, `/dashboard`). When set, marketing CTAs point at it absolutely; when unset, everything stays same-origin for local dev. |
 
 See [Deployment]({{ '/deployment/' | relative_url }}) for the full topology, CORS, and Keycloak redirect URIs.
+
+---
+
+## Firms, tenancy and metering
+
+**Tenancy.** A firm is the tenant. `cases`, `simulations` and `evidence` carry an `org_id`.
+`AccessService` is the single place the boundary is enforced: a case is visible if it is in
+the caller's firm and the caller is an owner or admin, created it, or has it shared with
+them. Simulations, evidence, agents and turns inherit from their case. The same service
+guards the WebSocket. The platform-admin role is checked separately (`require_platform_admin`)
+and grants nothing here.
+
+**Entitlements.** `EntitlementService` reads a firm's subscription and plan and enforces them:
+seats on invite and accept, status on create and start, simulations per month on first start,
+storage on upload, and the monthly token budget at start **and before every turn** inside the
+simulation engine.
+
+**Metering.** `build_llm_provider` wraps every provider in `MeteredLLM`, and
+`get_embedder` wraps embedders in `MeteredEmbedder`; vision calls are recorded in
+`transcribe_image`. Attribution (firm, user, simulation, agent role) travels in a `ContextVar`
+set by the engine, so providers and agents need no changes. Each call becomes an `llm_usage`
+document in Mongo and bumps the firm's monthly counter in Postgres. Recording is best-effort
+and never fails a turn.
+
+**Invitations.** Created by an owner or admin; a random token whose hash is stored; delivered
+by a Celery task over SMTP (Mailpit in development).
+
+For the permission rules see [Firms and access]({{ '/firms-and-access/' | relative_url }});
+for the operator side see [Admin portal and LLMOps]({{ '/admin-and-llmops/' | relative_url }}).
