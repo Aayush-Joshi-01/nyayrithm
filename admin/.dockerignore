@@ -1,0 +1,20 @@
+# Dependencies (installed fresh inside the image)
+node_modules
+.pnpm-store
+
+# Next.js build output
+.next
+out
+
+# Editor / OS
+.idea
+.vscode
+*.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docs
+*.md
