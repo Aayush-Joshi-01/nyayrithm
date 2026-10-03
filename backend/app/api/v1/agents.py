@@ -3,18 +3,14 @@ from __future__ import annotations
 import dataclasses
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
-from app.db.factory import get_repository
-from app.db.session import get_session
+from app.api.deps import get_access
 from app.llm.registry import list_providers, list_role_defaults
 from app.schemas.agent import AgentResponse
+from app.services.access import AccessService
 
 router = APIRouter()
-
-
-async def _agent_repo(session=Depends(get_session)):
-    return get_repository("agent", session)
 
 
 # Static routes must come before /{agent_id} so FastAPI matches them first.
@@ -29,15 +25,12 @@ async def list_llm_providers():
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
-async def get_agent(agent_id: UUID, repo=Depends(_agent_repo)):
-    agent = await repo.get(str(agent_id))
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return AgentResponse(**dataclasses.asdict(agent))
+async def get_agent(agent_id: UUID, access: AccessService = Depends(get_access)):
+    return AgentResponse(**dataclasses.asdict(await access.agent(agent_id)))
 
 
 @router.delete("/{agent_id}/memory", status_code=204)
-async def clear_agent_memory(agent_id: UUID):
+async def clear_agent_memory(agent_id: UUID, access: AccessService = Depends(get_access)):
     # Memory is in-process; clearing it requires the running orchestrator.
-    # This endpoint signals intent — the orchestrator checks this flag on next turn.
-    return
+    # This endpoint verifies access and signals intent only.
+    await access.agent(agent_id)
