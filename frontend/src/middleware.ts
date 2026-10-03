@@ -7,8 +7,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Check for access token cookie set by Keycloak callback handler
-  const token = request.cookies.get("kc_access_token")?.value
+  // The access token is short-lived; a surviving refresh token lets /api/auth/token
+  // mint a new one, so either cookie counts as a live session.
+  const token =
+    request.cookies.get("kc_access_token")?.value ??
+    request.cookies.get("kc_refresh_token")?.value
 
   if (!token) {
     const loginUrl = new URL("/login", request.url)

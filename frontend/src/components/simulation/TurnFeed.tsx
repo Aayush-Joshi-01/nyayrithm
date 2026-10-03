@@ -7,6 +7,7 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { simulationsApi } from "@/lib/api";
 import { roleStyle, roleVar, ROLE_SIGIL, formatRole, cn } from "@/lib/utils";
 import { CitationChip } from "../shared/CitationChip";
+import { LegalCitationChip } from "../shared/LegalCitationChip";
 import type { AgentRole, Turn } from "@/types/api";
 
 /* Provenance for a turn: a cited claim carries at least one citation; a
@@ -14,6 +15,8 @@ import type { AgentRole, Turn } from "@/types/api";
    record but not yet tied to a passage. (raise: challenger-provenance-ribbon) */
 function turnProv(turn: Turn): "cited" | "inferred" | "disputed" {
   if (turn.is_human_override) return "disputed";
+  // Law the registry could prove does not exist (or that is attached to the wrong case).
+  if (turn.legal_review?.citations.some((c) => c.severity === "error")) return "disputed";
   if ((turn.citations?.length ?? 0) > 0) return "cited";
   return "inferred";
 }
@@ -61,6 +64,16 @@ function TurnLine({ turn, simId, agentName, role, latest }: {
           >
             {formatRole(role)}
           </span>
+          {turn.procedure && (
+            <span className="font-mono text-[0.58rem] uppercase tracking-wide text-foreground/35">
+              {turn.procedure.stage_label}
+            </span>
+          )}
+          {turn.procedure?.ruling && (
+            <span className="rounded-sm border border-hairline px-1 py-px font-mono text-[0.58rem] uppercase tracking-wide text-foreground/55">
+              {turn.procedure.ruling}
+            </span>
+          )}
           {turn.is_human_override && (
             <span className="rounded-sm bg-oxblood-bright/12 px-1 py-px font-mono text-[0.58rem] uppercase tracking-wide text-oxblood-bright animate-in fade-in-0 slide-in-from-left-1 duration-200">
               overridden
@@ -118,6 +131,23 @@ function TurnLine({ turn, simId, agentName, role, latest }: {
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {turn.citations.map((c, i) => <CitationChip key={i} citation={c} />)}
               </div>
+            )}
+            {(turn.legal_review?.citations.length ?? 0) > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="font-mono text-[0.58rem] uppercase tracking-wide text-foreground/30">
+                  authorities
+                </span>
+                {turn.legal_review!.citations.map((c, i) => <LegalCitationChip key={i} citation={c} />)}
+              </div>
+            )}
+            {(turn.procedure?.violations.length ?? 0) > 0 && (
+              <ul className="mt-2 space-y-0.5">
+                {turn.procedure!.violations.map((v) => (
+                  <li key={v.code} className="font-mono text-[0.68rem] text-ember-text">
+                    ⚑ {v.message}
+                  </li>
+                ))}
+              </ul>
             )}
           </>
         )}

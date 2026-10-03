@@ -1,13 +1,37 @@
 import ky from "ky";
-import type { Case, Evidence, Simulation, Agent, Turn, AgentGraph } from "@/types/api";
+import type {
+  Case, Evidence, Simulation, Agent, Turn, AgentGraph,
+  ProcedureInfo, AuditVerification, LegalReview,
+} from "@/types/api";
+import { clearAccessToken, getAccessToken, redirectToLogin } from "@/lib/auth-token";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-const client = ky.create({
+// Every request carries the user's Keycloak access token. A 401 means the session
+// is gone (refresh failed), so send the user back to the login page.
+const authed = ky.create({
   prefixUrl: `${BASE}/api/v1`,
-  headers: { "Content-Type": "application/json" },
   timeout: 30000,
+  hooks: {
+    beforeRequest: [
+      async (request) => {
+        const token = await getAccessToken();
+        if (token) request.headers.set("Authorization", `Bearer ${token}`);
+      },
+    ],
+    afterResponse: [
+      async (_request, _options, response) => {
+        if (response.status === 401) {
+          clearAccessToken();
+          redirectToLogin();
+        }
+      },
+    ],
+  },
 });
+
+// JSON by default; multipart uploads use `authed` so the browser sets the boundary.
+const client = authed.extend({ headers: { "Content-Type": "application/json" } });
 
 // ── Cases ─────────────────────────────────────────────────────────────────────
 export const casesApi = {
@@ -41,9 +65,7 @@ export const evidenceApi = {
     const form = new FormData();
     form.append("file", file);
     if (title) form.append("title", title);
-    return ky
-      .post(`${BASE}/api/v1/cases/${caseId}/evidence/`, { body: form })
-      .json<Evidence>();
+    return authed.post(`cases/${caseId}/evidence/`, { body: form, timeout: 120000 }).json<Evidence>();
   },
 
   reindex: (caseId: string, evidenceId: string) =>
@@ -106,6 +128,18 @@ export const simulationsApi = {
 
   editTurn: (simId: string, turnId: string, content: string) =>
     client.patch(`simulations/${simId}/turns/${turnId}`, { json: { content } }).json<Turn>(),
+};
+
+// ── Legal accuracy ────────────────────────────────────────────────────────────
+export const legalApi = {
+  procedure: (simId: string) =>
+    client.get(`simulations/${simId}/procedure`).json<ProcedureInfo>(),
+
+  verifyAudit: (simId: string) =>
+    client.get(`simulations/${simId}/audit/verify`).json<AuditVerification>(),
+
+  verifyText: (body: { text: string; case_id?: string; country?: string }) =>
+    client.post("legal/verify", { json: body }).json<LegalReview & { notice: string }>(),
 };
 
 // ── Agents ────────────────────────────────────────────────────────────────────

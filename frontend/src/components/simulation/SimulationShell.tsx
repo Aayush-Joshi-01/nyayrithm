@@ -10,6 +10,7 @@ import { TurnFeed } from "./TurnFeed"
 import { AgentPanel } from "./AgentPanel"
 import { AgentGraph } from "./AgentGraph"
 import { AgentSetup } from "./AgentSetup"
+import { ProceedingBar } from "./ProceedingBar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -120,6 +121,15 @@ export function SimulationShell({ simId }: { caseId: string; simId: string }) {
           )}
         </div>
       </div>
+
+      {status !== "draft" && (
+        <ProceedingBar
+          simId={simId}
+          currentTurn={currentTurn}
+          live={live}
+          disclaimer={sim?.disclaimer}
+        />
+      )}
 
       {error && (
         <div className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-oxblood-bright/30 bg-oxblood-bright/10 px-4 py-2 text-xs text-oxblood-bright">

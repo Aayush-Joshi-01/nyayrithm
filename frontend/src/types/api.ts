@@ -72,6 +72,7 @@ export interface Simulation {
   started_at: string | null;
   ended_at: string | null;
   created_at: string;
+  disclaimer?: string;
 }
 
 export interface Citation {
@@ -96,6 +97,70 @@ export interface Turn {
   token_count: number;
   latency_ms: number;
   created_at: string;
+  legal_review?: LegalReview | null;
+  procedure?: ProcedureReview | null;
+}
+
+/* Legal accuracy: every legal authority an agent cites is checked against the
+   jurisdiction pack. "unverified"/"unindexed" mean "could not be checked", not "wrong". */
+export type LegalCitationStatus =
+  | "verified"
+  | "superseded"
+  | "unindexed"
+  | "unverified"
+  | "mismatch"
+  | "nonexistent";
+
+export interface LegalCitation {
+  kind: "statute" | "constitution" | "case";
+  raw: string;
+  status: LegalCitationStatus;
+  severity: "ok" | "notice" | "warning" | "error";
+  message: string;
+  ref: string | null;
+  title: string | null;
+  successor: string | null;
+}
+
+export interface LegalReview {
+  pack_id: string | null;
+  status: "clean" | "notices" | "flagged" | "no_pack";
+  counts: Record<string, number>;
+  citations: LegalCitation[];
+}
+
+export interface ProcedureReview {
+  stage: string;
+  stage_label: string;
+  objection: { ground: string | null } | null;
+  ruling: "sustained" | "overruled" | null;
+  violations: { code: string; message: string }[];
+}
+
+export interface ProcedureStage {
+  key: string;
+  label: string;
+  start_turn: number;
+  end_turn: number;
+  turns: number;
+  speakers: string[];
+  note: string | null;
+}
+
+export interface ProcedureInfo {
+  enforced: boolean;
+  mode: string;
+  stages: ProcedureStage[];
+  current_stage: string | null;
+  current_turn?: number;
+}
+
+export interface AuditVerification {
+  valid: boolean;
+  events: number;
+  broken_at: number | null;
+  reason: string | null;
+  head_hash: string | null;
 }
 
 export interface AgentGraphNode {
@@ -125,7 +190,8 @@ export type WsEvent =
   | { event: "connected"; data: { simulation_id: string } }
   | { event: "turn.started"; data: { turn_number: number; agent_id: string; agent_name: string; role: AgentRole } }
   | { event: "turn.token"; data: { agent_id: string; token: string } }
-  | { event: "turn.completed"; data: { turn_number: number; agent_id: string; agent_name: string; role: AgentRole; content: string; citations: Citation[]; spawned_agents: string[] } }
+  | { event: "turn.completed"; data: { turn_number: number; agent_id: string; agent_name: string; role: AgentRole; content: string; citations: Citation[]; spawned_agents: string[]; legal_review?: LegalReview | null; procedure?: ProcedureReview | null } }
+  | { event: "citation.flagged"; data: { agent_id: string; turn_number: number; citations: LegalCitation[] } }
   | { event: "agent.spawned"; data: { agent_id: string; role: AgentRole; name: string; parent_id: string; reason: string } }
   | { event: "simulation.completed"; data: { simulation_id: string } }
   | { event: "simulation.paused"; data: { simulation_id: string } }
